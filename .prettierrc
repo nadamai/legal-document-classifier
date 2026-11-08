@@ -1,0 +1,12 @@
+{
+  "arrowParens": "always",
+  "bracketSameLine": false,
+  "bracketSpacing": true,
+  "singleQuote": true,
+  "parser": "babel-ts",
+  "printWidth": 80,
+  "quoteProps": "as-needed",
+  "semi": true,
+  "trailingComma": "none",
+  "useTabs": true
+}
