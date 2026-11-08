@@ -1,1 +1,1 @@
-export { classifyText } from './classifyText.ts';
+export { classifyText } from './classifyText';

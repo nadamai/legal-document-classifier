@@ -1,4 +1,4 @@
-import type { Weights } from './types/Weights.ts';
+import type { Weights } from './types/Weights';
 
 export async function loadWeights(language: string): Promise<Weights> {
 	try {

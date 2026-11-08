@@ -1,5 +1,5 @@
-import type { FeatureVector } from '../types/FeatureVector.ts';
-import { tokenize } from './tokenize.ts';
+import type { FeatureVector } from '../types/FeatureVector';
+import { tokenize } from './tokenize';
 
 /** L2-normalised, so the text's length doesn't affect the score. */
 export function extractFeatures(text: string): FeatureVector {

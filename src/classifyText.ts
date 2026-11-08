@@ -1,8 +1,8 @@
-import { extractFeatures } from './features/extractFeatures.ts';
-import { loadWeights } from './loadWeights.ts';
-import { predictProbability } from './model/predictProbability.ts';
-import type { FeatureVector } from './types/FeatureVector.ts';
-import type { Weights } from './types/Weights.ts';
+import { extractFeatures } from './features/extractFeatures';
+import { loadWeights } from './loadWeights';
+import { predictProbability } from './model/predictProbability';
+import type { FeatureVector } from './types/FeatureVector';
+import type { Weights } from './types/Weights';
 
 /**
  * Probability (0–1) that `text` is a legal document. Pass the page's main
