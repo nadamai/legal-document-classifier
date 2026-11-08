@@ -2,9 +2,7 @@ import type { FeatureVector } from '../types/FeatureVector.ts';
 import type { Weights } from '../types/Weights.ts';
 import { sigmoid } from './sigmoid.ts';
 
-/**
- * Logistic regression: sigmoid(Σ weight × value)
- */
+/** Logistic regression: sigmoid(Σ weight × value) */
 export function predictProbability(
 	features: FeatureVector,
 	weights: Weights
