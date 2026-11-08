@@ -1,11 +1,24 @@
-const TOKEN: RegExp = /[\p{L}\p{N}]+/gu;
+const SIGNIFICANT_LEGAL_SYMBOLS: string = '§¶№©®™&';
+
+const TOKEN: RegExp = new RegExp(
+	`[\\p{L}\\p{M}\\p{N}]+|[${SIGNIFICANT_LEGAL_SYMBOLS}]`,
+	'gu'
+);
 
 /**
- * Splits text into lowercase word tokens. It uses only operations that give
- * the same result in Node (training) and Chrome (production): NFKC
- * normalisation, locale-independent lowercasing, and the Unicode letter and
- * number classes.
+ * Words are normalised after splitting, because NFKC on the whole text would
+ * turn `№` into "No" and `™` into "TM".
  */
 export function tokenize(text: string): string[] {
-	return text.normalize('NFKC').toLowerCase().match(TOKEN) ?? [];
+	const tokens: string[] = [];
+
+	for (const [token] of text.matchAll(TOKEN)) {
+		tokens.push(
+			SIGNIFICANT_LEGAL_SYMBOLS.includes(token)
+				? token
+				: token.normalize('NFKC').toLowerCase()
+		);
+	}
+
+	return tokens;
 }
