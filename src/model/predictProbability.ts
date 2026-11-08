@@ -2,16 +2,18 @@ import type { FeatureVector } from '../types/FeatureVector';
 import type { Weights } from '../types/Weights';
 import { sigmoid } from './sigmoid';
 
-/** Logistic regression: sigmoid(Σ weight × value) */
+/** Logistic regression: sigmoid(bias + Σ weight × value) */
 export function predictProbability(
 	features: FeatureVector,
 	weights: Weights
 ): number {
-	let z: number = 0;
+	const { bias, weights: tokenWeights }: Weights = weights;
 
-	for (const [word, value] of features) {
-		if (Object.hasOwn(weights, word)) {
-			z += (weights[word] ?? 0) * value;
+	let z: number = bias;
+
+	for (const [token, value] of features) {
+		if (Object.hasOwn(tokenWeights, token)) {
+			z += (tokenWeights[token] ?? 0) * value;
 		}
 	}
 

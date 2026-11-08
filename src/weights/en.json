@@ -1,5 +1,8 @@
 {
-	"privacy": 1.5,
-	"terms": 1.2,
-	"liability": 0.8
+	"bias": -1,
+	"weights": {
+		"privacy": 1.5,
+		"terms": 1.2,
+		"liability": 0.8
+	}
 }
