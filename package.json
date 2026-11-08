@@ -1,5 +1,5 @@
 {
-  "name": "@hamurabi/legal-documents-classifier",
+  "name": "@hamurabi/legal-document-classifier",
   "version": "1.0.0",
   "description": "npm package for classifying webpage content as web legal documents",
   "license": "MIT",
