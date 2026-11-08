@@ -1,0 +1,5 @@
+printf '\nType-checking (tsc)...\n'
+npm run typecheck || { printf '\nType check failed. Commit aborted.\n'; exit 1; }
+
+printf '\nFormatting staged files (pretty-quick)...\n'
+npm run prettier

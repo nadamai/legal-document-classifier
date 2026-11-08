@@ -8,10 +8,16 @@
   "main": "index.ts",
   "scripts": {
     "typecheck": "tsc",
-    "build": "tsdown"
+    "build": "tsdown",
+    "prepare": "husky",
+    "prettier": "pretty-quick --staged --pattern \"src/**/*.ts\"",
+    "prettier:check": "prettier --check \"src/**/*.ts\""
   },
   "devDependencies": {
     "@types/node": "26.6.6",
+    "husky": "^9.1.7",
+    "prettier": "^3.9.10",
+    "pretty-quick": "^4.2.2",
     "tsdown": "0.23.7",
     "typescript": "7.0.2"
   }
