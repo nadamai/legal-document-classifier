@@ -1,3 +1,1 @@
-export const test = (): void => {
-	console.log('test');
-};
+export { classifyText } from './classifyText.ts';
