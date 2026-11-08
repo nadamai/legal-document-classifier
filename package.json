@@ -1,0 +1,10 @@
+{
+  "name": "legal-documents-classifier",
+  "version": "1.0.0",
+  "description": "npm package for classifying webpage content as web legal documents",
+  "license": "MIT",
+  "author": "hamurabi",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {}
+}
