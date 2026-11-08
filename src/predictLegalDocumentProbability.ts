@@ -9,7 +9,7 @@ import type { Weights } from './types/Weights';
  * content, without navigation, footer or cookie banners. Languages without
  * their own weights use the English weights.
  */
-export async function classifyText(
+export async function predictLegalDocumentProbability(
 	text: string,
 	language: string = 'en'
 ): Promise<number> {

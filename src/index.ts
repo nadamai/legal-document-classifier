@@ -1,1 +1,1 @@
-export { classifyText } from './classifyText';
+export { predictLegalDocumentProbability } from './predictLegalDocumentProbability';
