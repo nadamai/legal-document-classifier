@@ -5,19 +5,28 @@ const TOKEN: RegExp = new RegExp(
 	'gu'
 );
 
+const NUMBER: RegExp = /^\p{N}+$/u;
+
 /**
  * Words are normalised after splitting, because NFKC on the whole text would
- * turn `№` into "No" and `™` into "TM".
+ * turn `№` into "No" and `™` into "TM". Numbers are dropped, so they stay
+ * neutral: list counters, years and postal codes are noise.
  */
 export function tokenize(text: string): string[] {
 	const tokens: string[] = [];
 
 	for (const [token] of text.matchAll(TOKEN)) {
-		tokens.push(
-			SIGNIFICANT_LEGAL_SYMBOLS.includes(token)
-				? token
-				: token.normalize('NFKC').toLowerCase()
-		);
+		if (SIGNIFICANT_LEGAL_SYMBOLS.includes(token)) {
+			tokens.push(token);
+
+			continue;
+		}
+
+		const word: string = token.normalize('NFKC').toLowerCase();
+
+		if (!NUMBER.test(word)) {
+			tokens.push(word);
+		}
 	}
 
 	return tokens;
