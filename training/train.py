@@ -45,18 +45,34 @@ def read_pages(lang: str) -> list[dict]:
         
         with path.open(newline='', encoding='utf-8') as file:
             for row in csv.DictReader(file, delimiter=';'):
-                pages.append(
-                    {'url': row['url'], 'text': row['content'], 'label': label}
-                )
+                pages.append({
+                    'url': row['url'],
+                    'label': label,
+                    'content': row['content'],
+                    'title': (row.get('title') or '').strip(),
+                    'h1': heading_lines(row.get('h1')),
+                    'h2': heading_lines(row.get('h2')),
+                    'h3': heading_lines(row.get('h3')),
+                })
                 
     return pages
 
 
-def featurize(texts: list[str]) -> list[dict[str, float]]:
+def heading_lines(value: str | None) -> list[str]:
+    """One heading per line in the CSV, as a list without empty lines."""
+    return [line.strip() for line in (value or '').splitlines() if line.strip()]
+
+
+def featurize(pages: list[dict]) -> list[dict[str, float]]:
     """Features come from tools/featurize.ts. Python never computes them."""
-    
+
     tsx = ROOT / 'node_modules' / '.bin' / 'tsx'
-    stdin = ''.join(json.dumps({'text': text}) + '\n' for text in texts)
+    fields = ('content', 'title', 'h1', 'h2', 'h3')
+
+    stdin = ''.join(
+        json.dumps({field: page[field] for field in fields}) + '\n'
+        for page in pages
+    )
     
     result = subprocess.run(
         [str(tsx), 'tools/featurize.ts'],
@@ -71,9 +87,9 @@ def featurize(texts: list[str]) -> list[dict[str, float]]:
     
     features = [json.loads(line) for line in result.stdout.splitlines() if line]
     
-    if len(features) != len(texts):
+    if len(features) != len(pages):
         raise TrainingError(
-            f'Got {len(features)} feature sets for {len(texts)} texts'
+            f'Got {len(features)} feature sets for {len(pages)} pages'
         )
     
     return features
@@ -127,7 +143,7 @@ def train_language(lang: str):
         raise TrainingError(f'Invalid language code "{lang}"')
     
     pages = read_pages(lang)
-    features = featurize([page['text'] for page in pages])
+    features = featurize(pages)
 
     # The classifier returns 0 for text without tokens, so such pages can't
     # teach it anything.
