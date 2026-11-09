@@ -2,11 +2,9 @@ import type { FeatureVector } from '../types/FeatureVector';
 import type { Page } from '../types/Page';
 import { tokenizeSegments } from './tokenize';
 
-/**
- * Every token, plus every pair of neighbouring tokens within a segment, joined
- * by a space (`polityka prywatności`). Tokens never contain spaces, so a pair
- * can't collide with a single token.
- */
+const MAX_CONTENT_LENGTH: number = 30000;
+
+// Tokens never contain spaces, so a pair can't collide with a token.
 function withPairs(segments: readonly (readonly string[])[]): string[] {
 	const terms: string[] = [];
 
@@ -27,10 +25,7 @@ function withPairs(segments: readonly (readonly string[])[]): string[] {
 	return terms;
 }
 
-/**
- * Adds one field's terms under `prefix`, L2-normalised within the field, so
- * neither the text's length nor the other fields affect their scale.
- */
+// Normalised per field, so a long body can't shrink a short title's features.
 function addField(
 	features: FeatureVector,
 	terms: readonly string[],
@@ -59,19 +54,28 @@ function addField(
 	}
 }
 
-/**
- * Content terms are unprefixed. `h2` and `h3` terms join them, so they're
- * scored by the same weights and count once more on top of their place in the
- * content. Title and `h1` terms get their own prefixes (`title:`, `h1:`) and so
- * their own weights. Terms never contain `:`, so the names can't collide.
- */
+function truncate(text: string, maxLength: number): string {
+	if (text.length <= maxLength) {
+		return text;
+	}
+
+	const lastBreak: number = Math.max(
+		text.lastIndexOf(' ', maxLength),
+		text.lastIndexOf('\n', maxLength)
+	);
+
+	return text.slice(0, lastBreak > 0 ? lastBreak : maxLength);
+}
+
+// `h2` and `h3` are also part of `content`, so their words count twice there.
+// Tokens never contain `:`, so prefixed names can't collide.
 export function extractFeatures(page: Page): FeatureVector {
 	const features: FeatureVector = new Map();
 
 	addField(
 		features,
 		withPairs([
-			...tokenizeSegments(page.content),
+			...tokenizeSegments(truncate(page.content, MAX_CONTENT_LENGTH)),
 			...tokenizeSegments((page.h2 ?? []).join('\n')),
 			...tokenizeSegments((page.h3 ?? []).join('\n'))
 		]),

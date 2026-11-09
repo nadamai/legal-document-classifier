@@ -9,13 +9,21 @@ const TOKEN_OR_BREAK: RegExp = new RegExp(
 
 const NUMBER: RegExp = /^\p{N}+$/u;
 
-/**
- * Splits text into runs of tokens, so word pairs never cross a run's edge. A
- * run ends at a line break, a sentence end (`.`, `!`, `?`, `…`) or a dropped
- * number. Words are normalised after splitting, because NFKC on the whole text
- * would turn `№` into "No" and `™` into "TM". Numbers are dropped, so they stay
- * neutral: list counters, years and postal codes are noise.
- */
+const MAX_ASCII_CODE: number = 127;
+
+function isAscii(word: string): boolean {
+	for (let index: number = 0; index < word.length; index++) {
+		if (word.charCodeAt(index) > MAX_ASCII_CODE) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+// NFKC runs per word, after splitting: on the whole text it would turn `№` into
+// "No" and `™` into "TM". Numbers are dropped as noise and end the segment, so
+// no word pair bridges them.
 export function tokenizeSegments(text: string): string[][] {
 	const segments: string[][] = [];
 	let segment: string[] = [];
@@ -40,7 +48,10 @@ export function tokenizeSegments(text: string): string[][] {
 			continue;
 		}
 
-		const word: string = match.normalize('NFKC').toLowerCase();
+		// NFKC leaves ASCII unchanged.
+		const word: string = (
+			isAscii(match) ? match : match.normalize('NFKC')
+		).toLowerCase();
 
 		if (NUMBER.test(word)) {
 			endSegment();

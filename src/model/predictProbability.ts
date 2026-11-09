@@ -2,7 +2,6 @@ import type { FeatureVector } from '../types/FeatureVector';
 import type { Weights } from '../types/Weights';
 import { sigmoid } from './sigmoid';
 
-/** Logistic regression: sigmoid(bias + Σ weight × value) */
 export function predictProbability(
 	features: FeatureVector,
 	weights: Weights
