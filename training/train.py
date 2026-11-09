@@ -98,11 +98,16 @@ def featurize(pages: list[dict]) -> list[dict[str, float]]:
 def export(vectorizer: DictVectorizer, model: LogisticRegression, path: Path):
     tokens = vectorizer.get_feature_names_out()
     
-    weights = {
-        str(token): float(weight)
-        for token, weight in zip(tokens, model.coef_[0])
-        if weight != 0
-    }
+    # Strongest legal signals first, strongest non-legal signals last. Ties are
+    # broken by token, so the file stays byte-identical between runs.
+    weights = dict(sorted(
+        (
+            (str(token), float(weight))
+            for token, weight in zip(tokens, model.coef_[0])
+            if weight != 0
+        ),
+        key=lambda item: (-item[1], item[0]),
+    ))
     
     payload = {'bias': float(model.intercept_[0]), 'weights': weights}
     
