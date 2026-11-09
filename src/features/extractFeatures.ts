@@ -35,18 +35,25 @@ function addField(
 }
 
 /**
- * Content tokens are unprefixed. Title and heading tokens get their own
- * prefixes (`title:`, `h1:`, …), so a word in a heading has its own weight.
- * Tokens never contain `:`, so the names can't collide.
+ * Content tokens are unprefixed. `h2` and `h3` tokens join them, so they're
+ * scored by the same weights and count once more on top of their place in the
+ * content. Title and `h1` tokens get their own prefixes (`title:`, `h1:`) and
+ * so their own weights. Tokens never contain `:`, so the names can't collide.
  */
 export function extractFeatures(page: Page): FeatureVector {
 	const features: FeatureVector = new Map();
 
-	addField(features, tokenize(page.content), '');
+	addField(
+		features,
+		[
+			...tokenize(page.content),
+			...tokenize((page.h2 ?? []).join('\n')),
+			...tokenize((page.h3 ?? []).join('\n'))
+		],
+		''
+	);
 	addField(features, tokenize(page.title ?? ''), 'title:');
 	addField(features, tokenize((page.h1 ?? []).join('\n')), 'h1:');
-	addField(features, tokenize((page.h2 ?? []).join('\n')), 'h2:');
-	addField(features, tokenize((page.h3 ?? []).join('\n')), 'h3:');
 
 	return features;
 }
