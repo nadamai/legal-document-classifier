@@ -1,0 +1,356 @@
+"""Scrape the page texts for each given language.
+
+For every language, opens each URL from dataset/<lang>/legal.txt and
+not-legal.txt in headless Chromium, runs the package's own extractPage
+(dist/extractor.iife.js) on the rendered page and appends the result to
+training/data/<lang>/legal.csv and not-legal.csv.
+
+URLs already in a CSV are skipped, so a stopped run continues where it ended.
+Delete the CSVs to scrape from scratch. Pages that fail to load, return an
+error, show a robot check or redirect to a home, consent or login page are
+skipped.
+
+Usage: training/.venv/bin/python training/scrape.py [lang ...]   (default: en)
+"""
+
+from __future__ import annotations
+
+import asyncio
+import csv
+import re
+import sys
+from collections import defaultdict
+from itertools import zip_longest
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from playwright.async_api import Browser, BrowserContext
+from playwright.async_api import Error as PlaywrightError
+from playwright.async_api import Response
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+from playwright.async_api import async_playwright
+
+from common import (
+    CSV_DELIMITER,
+    CSV_FIELDS,
+    DATA,
+    DATASET,
+    LABELS,
+    ROOT,
+    LanguageError,
+    run_languages,
+)
+
+EXTRACTOR = ROOT / 'dist' / 'extractor.iife.js'
+
+WORKERS = 4
+VIEWPORT = {'width': 1920, 'height': 1080}
+
+NAVIGATION_TIMEOUT_MS = 30_000
+NETWORK_IDLE_TIMEOUT_MS = 10_000
+SETTLE_DELAY_MS = 2_000
+
+MIN_CONTENT_LENGTH = 200
+
+# Robot checks and error pages are short. On longer pages these signs are
+# ordinary text, as when a privacy policy mentions reCAPTCHA.
+MAX_ERROR_PAGE_LENGTH = 1_500
+
+BLOCK_PAGE_SELECTOR = ', '.join([
+    '#challenge-form',
+    '#challenge-stage',
+    '#challenge-running',
+    '#cf-challenge-running',
+    '#px-captcha',
+    'iframe[src*="captcha-delivery.com"]',
+])
+
+CAPTCHA_SELECTOR = ', '.join([
+    'iframe[src*="recaptcha"]',
+    'iframe[src*="hcaptcha.com"]',
+    'iframe[src*="challenges.cloudflare.com"]',
+    '.g-recaptcha',
+    '.h-captcha',
+    '.cf-turnstile',
+])
+
+ERROR_PAGE_PHRASES = re.compile(
+    r'just a moment|jeszcze chwil|attention required|security check'
+    r'|verify(ing)? (that )?you are (a )?human|checking your browser'
+    r'|are you a robot|robot or human|pardon our interruption|captcha'
+    r'|access denied|request unsuccessful|unusual traffic'
+    r'|czy jesteś robotem|jesteś człowiekiem'
+    r'|\b404\b|not found|nie znaleziono|nie istnieje',
+    re.IGNORECASE,
+)
+
+# A dead link that lands on a consent wall or a login form would otherwise be
+# saved under the original URL's label.
+REDIRECT_TRAP = re.compile(
+    r'consent|log-?in|sign-?in|logowanie|captcha|/sorry/', re.IGNORECASE
+)
+
+
+class Skip(Exception):
+    pass
+
+
+def read_urls(path: Path) -> list[str]:
+    if not path.exists():
+        raise LanguageError(f'Missing {path.relative_to(ROOT)}')
+
+    lines = path.read_text(encoding='utf-8').splitlines()
+
+    return list(dict.fromkeys(line.strip() for line in lines if line.strip()))
+
+
+def scraped_urls(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+
+    with path.open(newline='', encoding='utf-8') as file:
+        reader = csv.DictReader(file, delimiter=CSV_DELIMITER)
+
+        return {row['url'] for row in reader}
+
+
+# Parallel workers then rarely load the same site at once.
+def interleave_by_host(urls: list[str]) -> list[str]:
+    by_host: dict[str, list[str]] = defaultdict(list)
+
+    for url in urls:
+        by_host[urlsplit(url).hostname or ''].append(url)
+
+    return [
+        url
+        for round_of_urls in zip_longest(*by_host.values())
+        for url in round_of_urls
+        if url is not None
+    ]
+
+
+def host_and_path(url: str) -> tuple[str, str]:
+    parts = urlsplit(url)
+
+    return (parts.hostname or '').removeprefix('www.'), parts.path.rstrip('/')
+
+
+def check_response(response: Response | None):
+    if response is None:
+        raise Skip('no response')
+
+    if response.status >= 400:
+        raise Skip(f'HTTP {response.status}')
+
+    content_type = response.headers.get('content-type', '')
+
+    if content_type and 'html' not in content_type:
+        raise Skip(f'not HTML ({content_type})')
+
+
+def check_redirect(url: str, final_url: str):
+    host, path = host_and_path(url)
+    final_host, final_path = host_and_path(final_url)
+
+    if (final_host, final_path) == (host, path):
+        return
+
+    if final_path == '' and path != '':
+        raise Skip(f'redirected to the home page {final_url}')
+
+    if REDIRECT_TRAP.search(final_host + final_path):
+        raise Skip(f'redirected to {final_url}')
+
+
+def check_text(extracted: dict, has_captcha: bool):
+    content = extracted['content']
+
+    if len(content) < MIN_CONTENT_LENGTH:
+        raise Skip(f'only {len(content)} characters of text')
+
+    if len(content) > MAX_ERROR_PAGE_LENGTH:
+        return
+
+    if has_captcha:
+        raise Skip('robot check')
+
+    if ERROR_PAGE_PHRASES.search('\n'.join([extracted['title'], content])):
+        raise Skip('error or robot check page')
+
+
+async def scrape_page(context: BrowserContext, url: str, extract: str) -> dict:
+    page = await context.new_page()
+
+    try:
+        response = await page.goto(
+            url, wait_until='domcontentloaded', timeout=NAVIGATION_TIMEOUT_MS
+        )
+
+        check_response(response)
+
+        try:
+            await page.wait_for_load_state(
+                'networkidle', timeout=NETWORK_IDLE_TIMEOUT_MS
+            )
+        except PlaywrightTimeoutError:
+            pass
+
+        await page.wait_for_timeout(SETTLE_DELAY_MS)
+
+        check_redirect(url, page.url)
+
+        is_block_page, has_captcha = await page.evaluate(
+            '''([blockPage, captcha]) => [
+                document.querySelector(blockPage) !== null,
+                document.querySelector(captcha) !== null
+            ]''',
+            [BLOCK_PAGE_SELECTOR, CAPTCHA_SELECTOR],
+        )
+
+        if is_block_page:
+            raise Skip('robot check')
+
+        extracted = await page.evaluate(extract)
+
+        check_text(extracted, has_captcha)
+
+        return extracted
+    finally:
+        await page.close()
+
+
+def to_row(url: str, extracted: dict) -> dict[str, str]:
+    return {
+        'url': url,
+        'title': extracted['title'],
+        'h1': '\n'.join(extracted['h1']),
+        'h2': '\n'.join(extracted['h2']),
+        'h3': '\n'.join(extracted['h3']),
+        'content': extracted['content'],
+    }
+
+
+def first_line(error: Exception) -> str:
+    lines = str(error).strip().splitlines()
+
+    return lines[0] if lines else type(error).__name__
+
+
+async def scrape_label(
+    context: BrowserContext, urls: list[str], path: Path, extract: str
+):
+    done = scraped_urls(path)
+    todo = interleave_by_host([url for url in urls if url not in done])
+    name = path.relative_to(ROOT)
+
+    print(f'{name}: {len(todo)} to scrape, {len(urls) - len(todo)} already in')
+
+    if not todo:
+        return
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    is_new = not path.exists() or path.stat().st_size == 0
+    queue = iter(enumerate(todo, start=1))
+    saved = 0
+
+    with path.open('a', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(
+            file, fieldnames=CSV_FIELDS, delimiter=CSV_DELIMITER
+        )
+
+        if is_new:
+            writer.writeheader()
+
+        async def work():
+            nonlocal saved
+
+            for number, url in queue:
+                prefix = f'  [{number}/{len(todo)}]'
+
+                try:
+                    extracted = await scrape_page(context, url, extract)
+                except (Skip, PlaywrightError) as error:
+                    print(
+                        f'{prefix} skip {url}: {first_line(error)}', flush=True
+                    )
+
+                    continue
+
+                writer.writerow(to_row(url, extracted))
+                file.flush()
+
+                saved += 1
+
+                print(
+                    f'{prefix} ok   {url} '
+                    f'({len(extracted["content"]):,} characters)',
+                    flush=True,
+                )
+
+        await asyncio.gather(*(work() for _ in range(WORKERS)))
+
+    print(f'{name}: {saved} saved, {len(todo) - saved} skipped')
+
+
+# Many sites turn away a HeadlessChrome user agent outright, which would skip
+# pages that every visitor can read.
+async def browser_user_agent(browser: Browser) -> str:
+    page = await browser.new_page()
+    user_agent = await page.evaluate('navigator.userAgent')
+
+    await page.close()
+
+    return user_agent.replace('HeadlessChrome', 'Chrome')
+
+
+async def scrape_language(lang: str, extract: str):
+    urls = {
+        stem: read_urls(DATASET / lang / f'{stem}.txt') for stem in LABELS
+    }
+
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(channel='chromium')
+
+        try:
+            context = await browser.new_context(
+                locale=lang,
+                viewport=VIEWPORT,
+                user_agent=await browser_user_agent(browser),
+                accept_downloads=False,
+            )
+
+            for stem, label_urls in urls.items():
+                await scrape_label(
+                    context, label_urls, DATA / lang / f'{stem}.csv', extract
+                )
+        finally:
+            await browser.close()
+
+
+def scrape_languages(languages: list[str]):
+    if not EXTRACTOR.exists():
+        sys.exit(f'Missing {EXTRACTOR.relative_to(ROOT)}. Run npm run build.')
+
+    extract = (
+        '() => { '
+        + EXTRACTOR.read_text(encoding='utf-8')
+        + '\nreturn LegalDocumentExtractor.extractPage(document); }'
+    )
+
+    try:
+        run_languages(
+            languages,
+            lambda lang: asyncio.run(scrape_language(lang, extract)),
+            'Scraping',
+        )
+    except KeyboardInterrupt:
+        sys.exit('\nStopped. Run it again to continue where it ended.')
+
+
+def main():
+    scrape_languages(sys.argv[1:] or ['en'])
+
+
+if __name__ == '__main__':
+    main()

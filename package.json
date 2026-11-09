@@ -12,7 +12,9 @@
     "prepare": "husky",
     "prettier": "pretty-quick --staged --pattern \"{src,tools}/**/*.ts\"",
     "prettier:check": "prettier --check \"{src,tools}/**/*.ts\"",
-    "train:setup": "python3.14 -m venv training/.venv && training/.venv/bin/pip install -r training/requirements.txt",
+    "train:setup": "python3.14 -m venv training/.venv && training/.venv/bin/pip install -r training/requirements.txt && training/.venv/bin/playwright install chromium",
+    "scrape": "npm run build && training/.venv/bin/python training/scrape.py",
+    "scrape:all": "npm run build && training/.venv/bin/python training/scrape_all.py",
     "train": "training/.venv/bin/python training/train.py",
     "train:all": "training/.venv/bin/python training/train_all.py"
   },

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import csv
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -19,32 +18,35 @@ from pathlib import Path
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 
-ROOT = Path(__file__).resolve().parent.parent
-DATA = ROOT / 'training' / 'data'
-LABELS = {'legal.csv': 1, 'not-legal.csv': 0}
-
-LANGUAGE = re.compile(r'[a-z]{2,3}(-[A-Za-z0-9]+)*')
+from common import (
+    CSV_DELIMITER,
+    DATA,
+    LABELS,
+    ROOT,
+    LanguageError,
+    run_languages,
+)
 
 # Inverse regularisation strength.
 # TODO: Tune it once there is enough data.
 C = 1.0
 
 
-class TrainingError(Exception):
+class TrainingError(LanguageError):
     pass
 
 
 def read_pages(lang: str) -> list[dict]:
     pages = []
     
-    for file_name, label in LABELS.items():
-        path = DATA / lang / file_name
+    for stem, label in LABELS.items():
+        path = DATA / lang / f'{stem}.csv'
         
         if not path.exists():
             raise TrainingError(f'Missing {path.relative_to(ROOT)}')
         
         with path.open(newline='', encoding='utf-8') as file:
-            for row in csv.DictReader(file, delimiter=';'):
+            for row in csv.DictReader(file, delimiter=CSV_DELIMITER):
                 pages.append({
                     'url': row['url'],
                     'label': label,
@@ -144,9 +146,6 @@ def report(pages, probabilities, weights, path: Path):
 
 
 def train_language(lang: str):
-    if not LANGUAGE.fullmatch(lang):
-        raise TrainingError(f'Invalid language code "{lang}"')
-    
     pages = read_pages(lang)
     features = featurize(pages)
 
@@ -178,28 +177,7 @@ def train_language(lang: str):
 
 
 def train_languages(languages: list[str]):
-    """Trains each language in turn, then exits with an error if any failed."""
-    
-    failed = []
-    
-    for index, lang in enumerate(dict.fromkeys(languages)):
-        if index > 0:
-            print()
-            
-        print(f'== {lang} ==')
-        
-        try:
-            train_language(lang)
-        except TrainingError as error:
-            sys.stdout.flush()
-            
-            print(f'Failed: {error}', file=sys.stderr, flush=True)
-            
-            failed.append(lang)
-            
-    if failed:
-        sys.stdout.flush()
-        sys.exit(f'\nTraining failed for: {", ".join(failed)}')
+    run_languages(languages, train_language, 'Training')
 
 
 def main():
