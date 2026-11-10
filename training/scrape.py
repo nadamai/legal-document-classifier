@@ -6,9 +6,11 @@ and not-legal.txt in headless Chromium, runs the package's own extractPage
 training/data/contents/<lang>/legal.csv and not-legal.csv.
 
 URLs already in a CSV are skipped, so a stopped run continues where it ended.
-Delete the CSVs to scrape from scratch. Pages that fail to load, return an
-error, show a robot check or redirect to a home, consent or login page are
-skipped.
+Delete the CSVs to scrape from scratch. Pages are skipped when robots.txt
+disallows them (for this scraper or for common AI-training crawlers), when
+they reserve text and data mining (tdm-reservation), and when they fail to
+load, return an error, show a robot check or redirect to a home, consent or
+login page.
 
 Usage: training/.venv/bin/python training/scrape.py [lang ...]   (default: en)
 """
@@ -29,6 +31,7 @@ from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Response
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import async_playwright
+from protego import Protego
 
 from common import (
     CONTENTS,
@@ -90,9 +93,73 @@ REDIRECT_TRAP = re.compile(
     r'consent|log-?in|sign-?in|logowanie|captcha|/sorry/', re.IGNORECASE
 )
 
+ROBOTS_USER_AGENT = 'LegalDocumentClassifier'
+
+# Most sites opt out of AI training by disallowing these crawlers, which is a
+# text-and-data-mining reservation too.
+AI_TRAINING_USER_AGENTS = (
+    'GPTBot',
+    'ClaudeBot',
+    'anthropic-ai',
+    'Google-Extended',
+    'Applebot-Extended',
+    'CCBot',
+    'meta-externalagent',
+)
+
+ROBOTS_TIMEOUT_MS = 10_000
+
+TDM_RESERVATION_META = 'meta[name="tdm-reservation"][content="1"]'
+
 
 class Skip(Exception):
     pass
+
+
+class Robots:
+    """robots.txt rules per origin, fetched once per run."""
+
+    def __init__(self, context: BrowserContext):
+        self.context = context
+        self.origins: dict[str, asyncio.Task[Protego | None]] = {}
+
+    async def check(self, url: str):
+        parts = urlsplit(url)
+        origin = f'{parts.scheme}://{parts.netloc}'
+
+        if origin not in self.origins:
+            self.origins[origin] = asyncio.create_task(self.fetch(origin))
+
+        rules = await self.origins[origin]
+
+        if rules is None:
+            return
+
+        for user_agent in (ROBOTS_USER_AGENT, *AI_TRAINING_USER_AGENTS):
+            if not rules.can_fetch(url, user_agent):
+                raise Skip(f'robots.txt disallows it for {user_agent}')
+
+    # As in RFC 9309: a missing robots.txt (4xx) allows everything, and an
+    # unreachable one (5xx, 429, a network error) disallows everything.
+    async def fetch(self, origin: str) -> Protego | None:
+        try:
+            response = await self.context.request.get(
+                f'{origin}/robots.txt', timeout=ROBOTS_TIMEOUT_MS
+            )
+        except PlaywrightError as error:
+            reason = first_line(error)
+
+            raise Skip(f'robots.txt unreachable: {reason}') from None
+
+        if response.status == 429 or response.status >= 500:
+            raise Skip(f'robots.txt unreachable: HTTP {response.status}')
+
+        if response.status >= 400:
+            return None
+
+        body = await response.body()
+
+        return Protego.parse(body.decode('utf-8', errors='replace'))
 
 
 def read_urls(path: Path) -> list[str]:
@@ -100,8 +167,13 @@ def read_urls(path: Path) -> list[str]:
         raise LanguageError(f'Missing {path.relative_to(ROOT)}')
 
     lines = path.read_text(encoding='utf-8').splitlines()
+    urls = (line.strip() for line in lines if line.strip())
 
-    return list(dict.fromkeys(line.strip() for line in lines if line.strip()))
+    return list(dict.fromkeys(with_scheme(url) for url in urls))
+
+
+def with_scheme(url: str) -> str:
+    return url if '://' in url else f'https://{url}'
 
 
 def scraped_urls(path: Path) -> set[str]:
@@ -142,6 +214,9 @@ def check_response(response: Response | None):
     if response.status >= 400:
         raise Skip(f'HTTP {response.status}')
 
+    if response.headers.get('tdm-reservation', '').strip() == '1':
+        raise Skip('reserves text and data mining (tdm-reservation)')
+
     content_type = response.headers.get('content-type', '')
 
     if content_type and 'html' not in content_type:
@@ -178,7 +253,11 @@ def check_text(extracted: dict, has_captcha: bool):
         raise Skip('error or robot check page')
 
 
-async def scrape_page(context: BrowserContext, url: str, extract: str) -> dict:
+async def scrape_page(
+    context: BrowserContext, robots: Robots, url: str, extract: str
+) -> dict:
+    await robots.check(url)
+
     page = await context.new_page()
 
     try:
@@ -199,13 +278,20 @@ async def scrape_page(context: BrowserContext, url: str, extract: str) -> dict:
 
         check_redirect(url, page.url)
 
-        is_block_page, has_captcha = await page.evaluate(
-            '''([blockPage, captcha]) => [
+        if page.url != url:
+            await robots.check(page.url)
+
+        is_block_page, has_captcha, reserves_tdm = await page.evaluate(
+            '''([blockPage, captcha, tdmReservation]) => [
                 document.querySelector(blockPage) !== null,
-                document.querySelector(captcha) !== null
+                document.querySelector(captcha) !== null,
+                document.querySelector(tdmReservation) !== null
             ]''',
-            [BLOCK_PAGE_SELECTOR, CAPTCHA_SELECTOR],
+            [BLOCK_PAGE_SELECTOR, CAPTCHA_SELECTOR, TDM_RESERVATION_META],
         )
+
+        if reserves_tdm:
+            raise Skip('reserves text and data mining (tdm-reservation)')
 
         if is_block_page:
             raise Skip('robot check')
@@ -237,7 +323,11 @@ def first_line(error: Exception) -> str:
 
 
 async def scrape_label(
-    context: BrowserContext, urls: list[str], path: Path, extract: str
+    context: BrowserContext,
+    robots: Robots,
+    urls: list[str],
+    path: Path,
+    extract: str,
 ):
     done = scraped_urls(path)
     todo = interleave_by_host([url for url in urls if url not in done])
@@ -269,7 +359,9 @@ async def scrape_label(
                 prefix = f'  [{number}/{len(todo)}]'
 
                 try:
-                    extracted = await scrape_page(context, url, extract)
+                    extracted = await scrape_page(
+                        context, robots, url, extract
+                    )
                 except (Skip, PlaywrightError) as error:
                     print(
                         f'{prefix} skip {url}: {first_line(error)}', flush=True
@@ -319,10 +411,12 @@ async def scrape_language(lang: str, extract: str):
                 user_agent=await browser_user_agent(browser),
                 accept_downloads=False,
             )
+            robots = Robots(context)
 
             for stem, label_urls in urls.items():
                 await scrape_label(
                     context,
+                    robots,
                     label_urls,
                     CONTENTS / lang / f'{stem}.csv',
                     extract,
