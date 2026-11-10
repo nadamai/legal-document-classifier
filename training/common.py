@@ -1,12 +1,16 @@
-"""Paths, the page CSV format and the per-language loop that scrape.py and
-train.py share."""
+"""Paths, the page CSV format, URL helpers and the per-language loop that
+scrape.py and train.py share."""
 
 from __future__ import annotations
 
 import re
 import sys
 from collections.abc import Callable
+from ipaddress import ip_address
 from pathlib import Path
+from urllib.parse import urlsplit
+
+from publicsuffixlist import PublicSuffixList
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'training' / 'data'
@@ -22,9 +26,29 @@ CSV_DELIMITER = ';'
 # Codes become file paths, so nothing else may pass.
 LANGUAGE = re.compile(r'[a-z]{2,3}(-[A-Za-z0-9]+)*')
 
+PUBLIC_SUFFIXES = PublicSuffixList()
+
 
 class LanguageError(Exception):
     """Stops one language. The other languages still run."""
+
+
+def with_scheme(url: str) -> str:
+    return url if '://' in url else f'https://{url}'
+
+
+def site_of(url: str) -> str:
+    """The registrable domain: policies.google.com and support.google.com are
+    one site, while each *.com.pl or *.github.io name is a site of its own."""
+
+    host = urlsplit(with_scheme(url)).hostname or ''
+
+    try:
+        ip_address(host)
+
+        return host
+    except ValueError:
+        return PUBLIC_SUFFIXES.privatesuffix(host) or host
 
 
 def check_language(lang: str):

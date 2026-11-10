@@ -42,6 +42,7 @@ from common import (
     URLS,
     LanguageError,
     run_languages,
+    with_scheme,
 )
 
 EXTRACTOR = ROOT / 'dist' / 'extractor.iife.js'
@@ -170,10 +171,6 @@ def read_urls(path: Path) -> list[str]:
     urls = (line.strip() for line in lines if line.strip())
 
     return list(dict.fromkeys(with_scheme(url) for url in urls))
-
-
-def with_scheme(url: str) -> str:
-    return url if '://' in url else f'https://{url}'
 
 
 def scraped_urls(path: Path) -> set[str]:

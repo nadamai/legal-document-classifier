@@ -5,15 +5,17 @@ not-legal.csv, gets the features from the package's own TypeScript code
 (tools/featurize.ts) and writes the bias and token weights to
 src/weights/<lang>.json.
 
-Usage: training/.venv/bin/python training/train.py [lang ...]   (default: en)
+Usage: training/.venv/bin/python training/train.py [--min-sites N] [lang ...]
+(default: en)
 """
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import subprocess
-import sys
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from sklearn.feature_extraction import DictVectorizer
@@ -26,11 +28,16 @@ from common import (
     ROOT,
     LanguageError,
     run_languages,
+    site_of,
 )
 
 # Inverse regularisation strength.
 # TODO: Tune it once there is enough data.
 C = 1.0
+
+# A feature on fewer sites is a brand, a person's name or one site's
+# boilerplate, which the published weights mustn't contain.
+MIN_SITES = 5
 
 
 class TrainingError(LanguageError):
@@ -98,6 +105,43 @@ def featurize(pages: list[dict]) -> list[dict[str, float]]:
     return features
 
 
+def drop_rare_features(
+    pages: list[dict], features: list[dict[str, float]], min_sites: int
+) -> list[dict[str, float]]:
+    """Only removes columns, so the remaining values are still exactly what
+    tools/featurize.ts computed, and what production computes."""
+
+    features_by_site: dict[str, set[str]] = defaultdict(set)
+
+    for page, page_features in zip(pages, features):
+        features_by_site[site_of(page['url'])].update(page_features)
+
+    site_counts = Counter(
+        feature
+        for site_features in features_by_site.values()
+        for feature in site_features
+    )
+    common = {
+        feature
+        for feature, count in site_counts.items()
+        if count >= min_sites
+    }
+
+    print(f'Features: {len(common):,} of {len(site_counts):,} are on '
+          f'{min_sites} or more of the {len(features_by_site):,} sites')
+
+    if not common:
+        raise TrainingError(
+            f'No feature is on {min_sites} or more sites. Add pages from more '
+            f'sites, or lower --min-sites.'
+        )
+
+    return [
+        {name: v for name, v in page_features.items() if name in common}
+        for page_features in features
+    ]
+
+
 def export(vectorizer: DictVectorizer, model: LogisticRegression, path: Path):
     tokens = vectorizer.get_feature_names_out()
     
@@ -146,7 +190,7 @@ def report(pages, probabilities, weights, path: Path):
           ', '.join(f'{t} {w:+.3f}' for t, w in ranked[:10]))
 
 
-def train_language(lang: str):
+def train_language(lang: str, min_sites: int):
     pages = read_pages(lang)
     features = featurize(pages)
 
@@ -166,6 +210,8 @@ def train_language(lang: str):
             'Need at least one legal and one not-legal page with text'
         )
 
+    features = drop_rare_features(pages, features, min_sites)
+
     vectorizer = DictVectorizer()
     matrix = vectorizer.fit_transform(features)
     model = LogisticRegression(C=C, max_iter=1000)
@@ -177,12 +223,45 @@ def train_language(lang: str):
     report(pages, model.predict_proba(matrix)[:, 1], weights, path)
 
 
-def train_languages(languages: list[str]):
-    run_languages(languages, train_language, 'Training')
+def train_languages(languages: list[str], min_sites: int = MIN_SITES):
+    run_languages(
+        languages, lambda lang: train_language(lang, min_sites), 'Training'
+    )
+
+
+def positive_int(value: str) -> int:
+    number = int(value)
+
+    if number < 1:
+        raise argparse.ArgumentTypeError('must be 1 or more')
+
+    return number
+
+
+def add_min_sites_option(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        '--min-sites',
+        type=positive_int,
+        default=MIN_SITES,
+        metavar='N',
+        help='keep only features found on at least N sites '
+        f'(default: {MIN_SITES}; 1 keeps every feature)',
+    )
 
 
 def main():
-    train_languages(sys.argv[1:] or ['en'])
+    parser = argparse.ArgumentParser(
+        description='Train the weights for each given language.'
+    )
+    parser.add_argument(
+        'languages', nargs='*', default=['en'], metavar='lang',
+        help='language codes (default: en)',
+    )
+    add_min_sites_option(parser)
+
+    args = parser.parse_args()
+
+    train_languages(args.languages, args.min_sites)
 
 
 if __name__ == '__main__':
