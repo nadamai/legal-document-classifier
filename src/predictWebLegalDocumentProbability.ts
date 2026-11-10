@@ -1,5 +1,5 @@
 import { extractPage } from './extraction/extractPage';
-import { predictWebLegalDocumentContentProbability } from './predictWebLegalDocumentContentProbability';
+import { predictWebLegalDocumentFeaturesProbability } from './predictWebLegalDocumentFeaturesProbability';
 
 /**
  * Probability (0–1) that a rendered web page is a web legal document, such as a
@@ -12,7 +12,7 @@ export async function predictWebLegalDocumentProbability(
 	document: Document,
 	language: string = 'en'
 ): Promise<number> {
-	return predictWebLegalDocumentContentProbability(
+	return predictWebLegalDocumentFeaturesProbability(
 		extractPage(document),
 		language
 	);

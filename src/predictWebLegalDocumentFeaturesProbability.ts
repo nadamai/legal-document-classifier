@@ -5,7 +5,7 @@ import type { FeatureVector } from './types/FeatureVector';
 import type { Page } from './types/Page';
 import type { Weights } from './types/Weights';
 
-export async function predictWebLegalDocumentContentProbability(
+export async function predictWebLegalDocumentFeaturesProbability(
 	page: Page,
 	language: string = 'en'
 ): Promise<number> {
