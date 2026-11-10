@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import json
 import re
 import sys
 from collections import defaultdict
@@ -28,7 +29,7 @@ from urllib.parse import urlsplit
 
 from playwright.async_api import Browser, BrowserContext
 from playwright.async_api import Error as PlaywrightError
-from playwright.async_api import Response
+from playwright.async_api import Page, Response
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import async_playwright
 from protego import Protego
@@ -111,6 +112,17 @@ AI_TRAINING_USER_AGENTS = (
 ROBOTS_TIMEOUT_MS = 10_000
 
 TDM_RESERVATION_META = 'meta[name="tdm-reservation"][content="1"]'
+
+MARKER_SELECTORS = (
+    BLOCK_PAGE_SELECTOR,
+    CAPTCHA_SELECTOR,
+    TDM_RESERVATION_META,
+)
+
+MARKERS = '[' + ', '.join(
+    f'document.querySelector({json.dumps(selector)}) !== null'
+    for selector in MARKER_SELECTORS
+) + ']'
 
 
 class Skip(Exception):
@@ -250,6 +262,49 @@ def check_text(extracted: dict, has_captcha: bool):
         raise Skip('error or robot check page')
 
 
+# A world of its own, like a browser extension's content script: the page's
+# scripts share the DOM, but can't replace the built-ins the expression uses.
+# A page that swaps String.prototype.trim for a buggy one would otherwise
+# turn headings into objects.
+async def evaluate_isolated(page: Page, expression: str) -> object:
+    cdp = await page.context.new_cdp_session(page)
+
+    try:
+        tree = await cdp.send('Page.getFrameTree')
+        world = await cdp.send('Page.createIsolatedWorld', {
+            'frameId': tree['frameTree']['frame']['id'],
+            'worldName': 'extractor',
+        })
+        result = await cdp.send('Runtime.evaluate', {
+            'expression': expression,
+            'contextId': world['executionContextId'],
+            'returnByValue': True,
+        })
+    finally:
+        await cdp.detach()
+
+    if 'exceptionDetails' in result:
+        details = result['exceptionDetails']
+        exception = details.get('exception', {})
+        error = exception.get('description') or details['text']
+
+        raise Skip(f'script failed: {error.splitlines()[0]}')
+
+    return result['result'].get('value')
+
+
+def is_page(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and all(isinstance(value.get(f), str) for f in ('title', 'content'))
+        and all(
+            isinstance(value.get(field), list)
+            and all(isinstance(item, str) for item in value[field])
+            for field in ('h1', 'h2', 'h3')
+        )
+    )
+
+
 async def scrape_page(
     context: BrowserContext, robots: Robots, url: str, extract: str
 ) -> dict:
@@ -278,14 +333,12 @@ async def scrape_page(
         if page.url != url:
             await robots.check(page.url)
 
-        is_block_page, has_captcha, reserves_tdm = await page.evaluate(
-            '''([blockPage, captcha, tdmReservation]) => [
-                document.querySelector(blockPage) !== null,
-                document.querySelector(captcha) !== null,
-                document.querySelector(tdmReservation) !== null
-            ]''',
-            [BLOCK_PAGE_SELECTOR, CAPTCHA_SELECTOR, TDM_RESERVATION_META],
-        )
+        markers = await evaluate_isolated(page, MARKERS)
+
+        if not isinstance(markers, list):
+            raise Skip('marker check returned nothing')
+
+        is_block_page, has_captcha, reserves_tdm = markers
 
         if reserves_tdm:
             raise Skip('reserves text and data mining (tdm-reservation)')
@@ -293,7 +346,10 @@ async def scrape_page(
         if is_block_page:
             raise Skip('robot check')
 
-        extracted = await page.evaluate(extract)
+        extracted = await evaluate_isolated(page, extract)
+
+        if not is_page(extracted):
+            raise Skip('the extractor returned something other than a page')
 
         check_text(extracted, has_captcha)
 
@@ -377,7 +433,11 @@ async def scrape_label(
                     flush=True,
                 )
 
-        await asyncio.gather(*(work() for _ in range(WORKERS)))
+        # Unlike gather, a failing worker cancels the others, instead of
+        # leaving them to fail on the closed browser.
+        async with asyncio.TaskGroup() as workers:
+            for _ in range(WORKERS):
+                workers.create_task(work())
 
     print(f'{name}: {saved} saved, {len(todo) - saved} skipped')
 
@@ -427,9 +487,9 @@ def scrape_languages(languages: list[str]):
         sys.exit(f'Missing {EXTRACTOR.relative_to(ROOT)}. Run npm run build.')
 
     extract = (
-        '() => { '
+        '(() => { '
         + EXTRACTOR.read_text(encoding='utf-8')
-        + '\nreturn LegalDocumentExtractor.extractPage(document); }'
+        + '\nreturn LegalDocumentExtractor.extractPage(document); })()'
     )
 
     try:

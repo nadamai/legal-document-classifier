@@ -3,6 +3,7 @@ scrape.py and train.py share."""
 
 from __future__ import annotations
 
+import csv
 import re
 import sys
 from collections.abc import Callable
@@ -27,6 +28,9 @@ CSV_DELIMITER = ';'
 LANGUAGE = re.compile(r'[a-z]{2,3}(-[A-Za-z0-9]+)*')
 
 PUBLIC_SUFFIXES = PublicSuffixList()
+
+# A page's text can be longer than the csv module's default 128 KiB field.
+csv.field_size_limit(2**31 - 1)
 
 
 class LanguageError(Exception):
