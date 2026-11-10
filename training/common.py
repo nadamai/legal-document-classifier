@@ -9,10 +9,11 @@ from collections.abc import Callable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DATASET = ROOT / 'dataset'
 DATA = ROOT / 'training' / 'data'
+URLS = DATA / 'urls'
+CONTENTS = DATA / 'contents'
 
-# File stem in dataset/<lang>/ and training/data/<lang>/ → label.
+# File stem in urls/<lang>/ and contents/<lang>/ → label.
 LABELS = {'legal': 1, 'not-legal': 0}
 
 CSV_FIELDS = ('url', 'title', 'h1', 'h2', 'h3', 'content')
@@ -32,6 +33,9 @@ def check_language(lang: str):
 
 
 def language_folders(parent: Path) -> list[str]:
+    if not parent.is_dir():
+        sys.exit(f'Missing {parent.relative_to(ROOT)}')
+
     folders = sorted(path for path in parent.iterdir() if path.is_dir())
 
     for folder in folders:

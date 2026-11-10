@@ -1,9 +1,9 @@
 """Scrape the page texts for each given language.
 
-For every language, opens each URL from dataset/<lang>/legal.txt and
-not-legal.txt in headless Chromium, runs the package's own extractPage
+For every language, opens each URL from training/data/urls/<lang>/legal.txt
+and not-legal.txt in headless Chromium, runs the package's own extractPage
 (dist/extractor.iife.js) on the rendered page and appends the result to
-training/data/<lang>/legal.csv and not-legal.csv.
+training/data/contents/<lang>/legal.csv and not-legal.csv.
 
 URLs already in a CSV are skipped, so a stopped run continues where it ended.
 Delete the CSVs to scrape from scratch. Pages that fail to load, return an
@@ -31,12 +31,12 @@ from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import async_playwright
 
 from common import (
+    CONTENTS,
     CSV_DELIMITER,
     CSV_FIELDS,
-    DATA,
-    DATASET,
     LABELS,
     ROOT,
+    URLS,
     LanguageError,
     run_languages,
 )
@@ -306,7 +306,7 @@ async def browser_user_agent(browser: Browser) -> str:
 
 async def scrape_language(lang: str, extract: str):
     urls = {
-        stem: read_urls(DATASET / lang / f'{stem}.txt') for stem in LABELS
+        stem: read_urls(URLS / lang / f'{stem}.txt') for stem in LABELS
     }
 
     async with async_playwright() as playwright:
@@ -322,7 +322,10 @@ async def scrape_language(lang: str, extract: str):
 
             for stem, label_urls in urls.items():
                 await scrape_label(
-                    context, label_urls, DATA / lang / f'{stem}.csv', extract
+                    context,
+                    label_urls,
+                    CONTENTS / lang / f'{stem}.csv',
+                    extract,
                 )
         finally:
             await browser.close()

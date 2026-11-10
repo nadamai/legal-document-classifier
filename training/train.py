@@ -1,8 +1,9 @@
 """Train the logistic regression for each given language.
 
-For every language, reads training/data/<lang>/legal.csv and not-legal.csv,
-gets the features from the package's own TypeScript code (tools/featurize.ts)
-and writes the bias and token weights to src/weights/<lang>.json.
+For every language, reads training/data/contents/<lang>/legal.csv and
+not-legal.csv, gets the features from the package's own TypeScript code
+(tools/featurize.ts) and writes the bias and token weights to
+src/weights/<lang>.json.
 
 Usage: training/.venv/bin/python training/train.py [lang ...]   (default: en)
 """
@@ -19,8 +20,8 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 
 from common import (
+    CONTENTS,
     CSV_DELIMITER,
-    DATA,
     LABELS,
     ROOT,
     LanguageError,
@@ -40,7 +41,7 @@ def read_pages(lang: str) -> list[dict]:
     pages = []
     
     for stem, label in LABELS.items():
-        path = DATA / lang / f'{stem}.csv'
+        path = CONTENTS / lang / f'{stem}.csv'
         
         if not path.exists():
             raise TrainingError(f'Missing {path.relative_to(ROOT)}')
