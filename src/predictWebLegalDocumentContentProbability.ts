@@ -5,13 +5,7 @@ import type { FeatureVector } from './types/FeatureVector';
 import type { Page } from './types/Page';
 import type { Weights } from './types/Weights';
 
-/**
- * Probability (0–1) that a page is a legal document, or 0 for a page without
- * tokens. `content` is the page's main text, without navigation, footer or
- * cookie banners. Take the title and headings from that same main content.
- * Languages without their own weights use the English weights.
- */
-export async function predictLegalDocumentProbability(
+export async function predictWebLegalDocumentContentProbability(
 	page: Page,
 	language: string = 'en'
 ): Promise<number> {
