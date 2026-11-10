@@ -1,6 +1,9 @@
+import type { SupportedLanguage } from '../types/SupportedLanguage';
 import type { Weights } from '../types/Weights';
 
-export async function loadWeights(language: string): Promise<Weights> {
+export async function loadWeights(
+	language: SupportedLanguage
+): Promise<Weights> {
 	try {
 		const weightsModule: { default: Weights } = await import(
 			`../weights/${language}.json`,
@@ -8,12 +11,9 @@ export async function loadWeights(language: string): Promise<Weights> {
 		);
 
 		return weightsModule.default;
-	} catch {
-		const englishModule: { default: Weights } = await import(
-			'../weights/en.json',
-			{ with: { type: 'json' } }
-		);
-
-		return englishModule.default;
+	} catch (error: unknown) {
+		throw new Error(`Unsupported language: "${language}"`, {
+			cause: error
+		});
 	}
 }
