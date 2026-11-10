@@ -42,8 +42,8 @@ from common import (
     ROOT,
     URLS,
     LanguageError,
+    read_urls,
     run_languages,
-    with_scheme,
 )
 
 EXTRACTOR = ROOT / 'dist' / 'extractor.iife.js'
@@ -174,15 +174,6 @@ class Robots:
 
         return Protego.parse(body.decode('utf-8', errors='replace'))
 
-
-def read_urls(path: Path) -> list[str]:
-    if not path.exists():
-        raise LanguageError(f'Missing {path.relative_to(ROOT)}')
-
-    lines = path.read_text(encoding='utf-8').splitlines()
-    urls = (line.strip() for line in lines if line.strip())
-
-    return list(dict.fromkeys(with_scheme(url) for url in urls))
 
 
 def scraped_urls(path: Path) -> set[str]:

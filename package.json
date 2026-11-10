@@ -16,7 +16,8 @@
     "scrape:all": "npm run build && training/.venv/bin/python training/scrape_all.py",
     "train:setup": "sh training/setup.sh",
     "train": "training/.venv/bin/python training/train.py",
-    "train:all": "training/.venv/bin/python training/train_all.py"
+    "train:all": "training/.venv/bin/python training/train_all.py",
+    "evaluate": "training/.venv/bin/python training/evaluate.py"
   },
   "devDependencies": {
     "@types/node": "26.6.6",

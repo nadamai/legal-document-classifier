@@ -41,6 +41,16 @@ def with_scheme(url: str) -> str:
     return url if '://' in url else f'https://{url}'
 
 
+def read_urls(path: Path) -> list[str]:
+    if not path.exists():
+        raise LanguageError(f'Missing {path.relative_to(ROOT)}')
+
+    lines = path.read_text(encoding='utf-8').splitlines()
+    urls = (line.strip() for line in lines if line.strip())
+
+    return list(dict.fromkeys(with_scheme(url) for url in urls))
+
+
 def site_of(url: str) -> str:
     """The registrable domain: policies.google.com and support.google.com are
     one site, while each *.com.pl or *.github.io name is a site of its own."""
