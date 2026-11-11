@@ -291,7 +291,7 @@ def is_page(value: object) -> bool:
         and all(
             isinstance(value.get(field), list)
             and all(isinstance(item, str) for item in value[field])
-            for field in ('h1', 'h2', 'h3')
+            for field in ('h1', 'h2')
         )
     )
 
@@ -355,7 +355,6 @@ def to_row(url: str, extracted: dict) -> dict[str, str]:
         'title': extracted['title'],
         'h1': '\n'.join(extracted['h1']),
         'h2': '\n'.join(extracted['h2']),
-        'h3': '\n'.join(extracted['h3']),
         'content': extracted['content'],
     }
 

@@ -102,7 +102,6 @@ def read_pages(lang: str) -> list[dict]:
                     'title': (row.get('title') or '').strip(),
                     'h1': heading_lines(row.get('h1')),
                     'h2': heading_lines(row.get('h2')),
-                    'h3': heading_lines(row.get('h3')),
                 })
 
     if ignored:
@@ -120,7 +119,7 @@ def featurize(pages: list[dict]) -> list[dict[str, float]]:
     """Features come from tools/featurize.ts. Python never computes them."""
 
     tsx = ROOT / 'node_modules' / '.bin' / 'tsx'
-    fields = ('content', 'title', 'h1', 'h2', 'h3')
+    fields = ('content', 'title', 'h1', 'h2')
 
     stdin = ''.join(
         json.dumps({field: page[field] for field in fields}) + '\n'

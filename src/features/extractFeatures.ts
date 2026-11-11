@@ -67,7 +67,7 @@ function truncate(text: string, maxLength: number): string {
 	return text.slice(0, lastBreak > 0 ? lastBreak : maxLength);
 }
 
-// `h2` and `h3` are also part of `content`, so their words count twice there.
+// `h2` is also part of `content`, so its words count twice there.
 // Tokens never contain `:`, so prefixed names can't collide.
 export function extractFeatures(page: Page): FeatureVector {
 	const features: FeatureVector = new Map();
@@ -76,8 +76,7 @@ export function extractFeatures(page: Page): FeatureVector {
 		features,
 		withPairs([
 			...tokenizeSegments(truncate(page.content, MAX_CONTENT_LENGTH)),
-			...tokenizeSegments((page.h2 ?? []).join('\n')),
-			...tokenizeSegments((page.h3 ?? []).join('\n'))
+			...tokenizeSegments((page.h2 ?? []).join('\n'))
 		]),
 		''
 	);

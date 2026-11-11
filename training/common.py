@@ -21,7 +21,7 @@ CONTENTS = DATA / 'contents'
 # File stem in urls/<lang>/ and contents/<lang>/ → label.
 LABELS = {'legal': 1, 'not-legal': 0}
 
-CSV_FIELDS = ('url', 'title', 'h1', 'h2', 'h3', 'content')
+CSV_FIELDS = ('url', 'title', 'h1', 'h2', 'content')
 CSV_DELIMITER = ';'
 
 # Codes become file paths, so nothing else may pass.

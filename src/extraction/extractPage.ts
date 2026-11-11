@@ -123,7 +123,7 @@ export function extractPage(document: Document): Page {
 	const body: HTMLElement | null = document.body;
 
 	if (body === null) {
-		return { content: '', title, h1: [], h2: [], h3: [] };
+		return { content: '', title, h1: [], h2: [] };
 	}
 
 	const root: Element = findRoot(body);
@@ -133,7 +133,6 @@ export function extractPage(document: Document): Page {
 		content: collectText(root, excluded),
 		title,
 		h1: collectHeadings(root, 'h1', excluded),
-		h2: collectHeadings(root, 'h2', excluded),
-		h3: collectHeadings(root, 'h3', excluded)
+		h2: collectHeadings(root, 'h2', excluded)
 	};
 }
