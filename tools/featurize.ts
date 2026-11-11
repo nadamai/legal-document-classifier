@@ -1,7 +1,7 @@
 import { createInterface, type Interface } from 'node:readline';
-import { extractFeatures } from '../src/features/extractFeatures';
-import type { FeatureVector } from '../src/types/FeatureVector';
-import type { Page } from '../src/types/Page';
+import { extractFeatures } from '~/src/features/extractFeatures';
+import type { FeatureVector } from '~/src/types/FeatureVector';
+import type { Page } from '~/src/types/Page';
 
 const lines: Interface = createInterface({
 	input: process.stdin,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { extractPage } from '../../../src/extraction/extractPage';
-import type { Page } from '../../../src/types/Page';
-import { renderPage } from '../../common/renderPage';
+import { extractPage } from '~/src/extraction/extractPage';
+import type { Page } from '~/src/types/Page';
+import { renderPage } from '~/test/common/renderPage';
 
 const LONG_TEXT: string =
 	'These terms govern your use of the service and explain your rights. '.repeat(

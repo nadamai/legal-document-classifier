@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tokenize, tokenizeSegments } from '../../../src/features/tokenize';
+import { tokenize, tokenizeSegments } from '~/src/features/tokenize';
 
 describe('tokenize', () => {
 	it('lowercases words and drops punctuation', () => {

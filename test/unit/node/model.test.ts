@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { isWeights } from '../../../src/model/isWeights';
-import { predictProbability } from '../../../src/model/predictProbability';
-import { sigmoid } from '../../../src/model/sigmoid';
-import type { FeatureVector } from '../../../src/types/FeatureVector';
+import { isWeights } from '~/src/model/isWeights';
+import { predictProbability } from '~/src/model/predictProbability';
+import { sigmoid } from '~/src/model/sigmoid';
+import type { FeatureVector } from '~/src/types/FeatureVector';
 
 describe('sigmoid', () => {
 	it('is 0.5 at 0 and symmetric', () => {

@@ -1,10 +1,10 @@
 import { createServer, type Server } from 'node:http';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { configure } from '../../../src/configure';
-import { predictWebLegalDocumentFeaturesProbability as score } from '../../../src/model/predictWebLegalDocumentFeaturesProbability';
-import { sigmoid } from '../../../src/model/sigmoid';
-import type { Page } from '../../../src/types/Page';
-import type { Weights } from '../../../src/types/Weights';
+import { configure } from '~/src/configure';
+import { predictWebLegalDocumentFeaturesProbability as score } from '~/src/model/predictWebLegalDocumentFeaturesProbability';
+import { sigmoid } from '~/src/model/sigmoid';
+import type { Page } from '~/src/types/Page';
+import type { Weights } from '~/src/types/Weights';
 
 const PAGE: Page = { content: 'We process your personal data.' };
 

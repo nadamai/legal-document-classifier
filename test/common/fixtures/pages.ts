@@ -1,4 +1,4 @@
-import type { Page } from '../../../src/types/Page';
+import type { Page } from '~/src/types/Page';
 
 // Hand-written for these tests. Never paste text from real sites here.
 export const ENGLISH_PRIVACY_POLICY: Page = {

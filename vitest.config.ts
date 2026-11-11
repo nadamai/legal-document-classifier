@@ -20,9 +20,11 @@ function chromium(): BrowserOptions {
 }
 
 const config: ViteUserConfig = defineConfig({
+	resolve: { tsconfigPaths: true },
 	test: {
 		projects: [
 			{
+				extends: true,
 				test: {
 					name: { label: 'unit-node', color: 'green' },
 					include: ['test/unit/node/**/*.test.ts'],
@@ -30,6 +32,7 @@ const config: ViteUserConfig = defineConfig({
 				}
 			},
 			{
+				extends: true,
 				test: {
 					name: { label: 'unit-browser', color: 'cyan' },
 					include: ['test/unit/browser/**/*.test.ts'],
@@ -37,6 +40,7 @@ const config: ViteUserConfig = defineConfig({
 				}
 			},
 			{
+				extends: true,
 				test: {
 					name: 'e2e',
 					include: ['test/e2e/**/*.test.ts'],

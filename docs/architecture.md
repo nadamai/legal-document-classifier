@@ -162,6 +162,8 @@ The file itself is the source of truth. This section explains why each option is
 
 **Scope.** The root `tsconfig.json` covers `src/` only, which is browser code. `tools/tsconfig.json` extends it, sets `"types": ["node"]` and includes `tools/*.ts`. `test/tsconfig.json` does the same for `test/` and `vitest.config.ts`. `npm run typecheck` checks all three configs. A single config with Node types would let browser code use Node APIs without an error.
 
+**Path alias.** The root `tsconfig.json` maps `~/*` to the repository root (`paths`, no `baseUrl`, which TypeScript 7 drops). The two child configs inherit it. tsx reads it from the root config, and Vitest through `resolve.tsconfigPaths` in `vitest.config.ts`, which each test project gets with `extends: true`. Only `test/` and `tools/` use it; `src/` stays relative, so tsdown never has to resolve the alias.
+
 **Options:**
 
 - **Environment:**

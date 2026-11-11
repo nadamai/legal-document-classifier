@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { extractFeatures } from '../../../src/features/extractFeatures';
-import type { FeatureVector } from '../../../src/types/FeatureVector';
-import { FEATURE_SNAPSHOT_PAGES } from '../../common/fixtures/pages';
+import { extractFeatures } from '~/src/features/extractFeatures';
+import type { FeatureVector } from '~/src/types/FeatureVector';
+import { FEATURE_SNAPSHOT_PAGES } from '~/test/common/fixtures/pages';
 
 const MAX_CONTENT_LENGTH: number = 30000;
 

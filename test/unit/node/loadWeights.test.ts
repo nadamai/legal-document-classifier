@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { loadWeights } from '../../../src/model/loadWeights';
-import { SUPPORTED_LANGUAGES } from '../../../src/model/supportedLanguages';
-import type { Weights } from '../../../src/types/Weights';
+import { loadWeights } from '~/src/model/loadWeights';
+import { SUPPORTED_LANGUAGES } from '~/src/model/supportedLanguages';
+import type { Weights } from '~/src/types/Weights';
 
 describe('loadWeights', () => {
 	it.each(SUPPORTED_LANGUAGES)(

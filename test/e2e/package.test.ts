@@ -1,9 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { extractPage } from '../../src/extraction/extractPage';
-import type * as Package from '../../src/index';
-import { sigmoid } from '../../src/model/sigmoid';
-import type { Page } from '../../src/types/Page';
-import { renderPage } from '../common/renderPage';
+import { extractPage } from '~/src/extraction/extractPage';
+import type * as Package from '~/src/index';
+import { sigmoid } from '~/src/model/sigmoid';
+import type { Page } from '~/src/types/Page';
+import { renderPage } from '~/test/common/renderPage';
 
 // Run `npm run build` first; `npm test` does.
 const PACKAGE_URL: string = '/dist/index.js';

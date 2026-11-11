@@ -1,13 +1,13 @@
 import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { predictWebLegalDocumentFeaturesProbability as score } from '../../../src/model/predictWebLegalDocumentFeaturesProbability';
-import { SUPPORTED_LANGUAGES } from '../../../src/model/supportedLanguages';
+import { predictWebLegalDocumentFeaturesProbability as score } from '~/src/model/predictWebLegalDocumentFeaturesProbability';
+import { SUPPORTED_LANGUAGES } from '~/src/model/supportedLanguages';
 import {
 	ENGLISH_PRIVACY_POLICY,
 	ENGLISH_PRODUCT_PAGE,
 	POLISH_PRODUCT_PAGE,
 	POLISH_TERMS
-} from '../../common/fixtures/pages';
+} from '~/test/common/fixtures/pages';
 
 // Sanity bounds on obvious pages, not a benchmark: `npm run evaluate` measures
 // the model. A retrain that breaks these has gone badly wrong.
