@@ -1,9 +1,14 @@
-import type { SupportedLanguage } from '../types/SupportedLanguage';
 import type { Weights } from '../types/Weights';
+import { loadCustomWeights } from './customWeights';
 
-export async function loadWeights(
-	language: SupportedLanguage
-): Promise<Weights> {
+// Custom weights never fall back to the bundled ones: a failed load throws.
+export async function loadWeights(language: string): Promise<Weights> {
+	const custom: Promise<Weights> | null = loadCustomWeights(language);
+
+	if (custom !== null) {
+		return custom;
+	}
+
 	try {
 		const weightsModule: { default: Weights } = await import(
 			`../weights/${language}.json`,
