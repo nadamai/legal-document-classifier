@@ -28,7 +28,7 @@ import { predictWebLegalDocumentProbability } from '@hamurabi/legal-document-cla
 const p = await predictWebLegalDocumentProbability(document);
 
 if (p >= 0.9) {
-	// Most likely a web legal document
+    // Most likely a web legal document
 }
 ```
 
@@ -42,7 +42,7 @@ import { predictWebLegalDocumentProbability } from '@hamurabi/legal-document-cla
 const p = await predictWebLegalDocumentProbability(document, 'pl');
 
 if (p >= 0.9) {
-	// Most likely a Polish web legal document
+    // Most likely a Polish web legal document
 }
 ```
 
@@ -58,17 +58,17 @@ To see the list of all available languages please refer to: [Supported languages
 import { configure, predictWebLegalDocumentProbability } from '@hamurabi/legal-document-classifier';
 
 configure({
-	weights: {
-		fr: '/weights/fr.json',
-		de: 'https://example.com/weights/de.json',
-		pl: { 
-			bias: -1, 
-			weights: { 
-				'polityka': 1.4, 
-				'polityka prywatności': 2.1 
-			} 
-		}
-	}
+    weights: {
+        fr: '/weights/fr.json',
+        de: 'https://example.com/weights/de.json',
+        pl: { 
+            bias: -1, 
+            weights: { 
+                'polityka': 1.4, 
+                'polityka prywatności': 2.1 
+            } 
+        }
+    }
 });
 
 const p = await predictWebLegalDocumentProbability<string>(document, 'de');
@@ -82,9 +82,9 @@ The package is a standard ES module, so `<script type="module">` can load it wit
 
 ```html
 <script type="module">
-	import { predictWebLegalDocumentProbability } from './vendor/legal-document-classifier/dist/index.js';
+    import { predictWebLegalDocumentProbability } from './vendor/legal-document-classifier/dist/index.js';
 
-	const p = await predictWebLegalDocumentProbability(document);
+    const p = await predictWebLegalDocumentProbability(document);
 </script>
 ```
 
@@ -94,8 +94,8 @@ The package is a standard ES module, so `<script type="module">` can load it wit
 
 ```ts
 async predictWebLegalDocumentProbability<Language extends string = SupportedLanguage>(
-	document: Document,
-	language?: Language
+    document: Document,
+    language?: Language
 ): Promise<number>
 ```
 
@@ -128,8 +128,8 @@ Sets custom weights per language, globally, for every later prediction.
 
 ```ts
 type Weights = { 
-	bias: number; 
-	weights: Record<string, number> 
+    bias: number; 
+    weights: Record<string, number> 
 };
 
 type WeightsSource = string | URL | Weights;
