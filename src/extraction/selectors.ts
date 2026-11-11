@@ -50,5 +50,23 @@ export const MAIN_SELECTOR: string = 'main, [role="main"]';
 export const ICON_FONT_SELECTOR: string =
 	'[class*="material-icons"], [class*="material-symbols"]';
 
+export const COLLAPSED_SELECTOR: string =
+	'details:not([open]), [hidden="until-found"]';
+
+// An accordion's button names its panel with aria-controls.
+export const COLLAPSED_TRIGGER_SELECTOR: string =
+	'[aria-expanded="false"][aria-controls]';
+
+// Menus and popups are collapsed too, but they aren't content.
+export const POPUP_SELECTOR: string = [
+	'[role="menu"]',
+	'[role="menubar"]',
+	'[role="listbox"]',
+	'[role="tree"]',
+	'[role="dialog"]',
+	'[role="alertdialog"]',
+	'[role="tooltip"]'
+].join(', ');
+
 export const NON_RENDERED_SELECTOR: string =
 	'script, style, noscript, template, svg';

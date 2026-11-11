@@ -17,9 +17,15 @@ export function renderedText(element: Element): string {
 		: (element.textContent ?? '');
 }
 
+// checkVisibility() is false for display: contents, whose children still
+// render.
 export function isRendered(element: Element): boolean {
+	const view: Window | null = element.ownerDocument.defaultView;
+
 	return (
-		element.ownerDocument.defaultView === null || element.checkVisibility()
+		view === null ||
+		element.checkVisibility() ||
+		view.getComputedStyle(element).display === 'contents'
 	);
 }
 

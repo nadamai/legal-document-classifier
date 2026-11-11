@@ -7,6 +7,7 @@ import {
 	renderedText,
 	textLength
 } from './dom';
+import { collapsedText, findCollapsedElements } from './findCollapsedElements';
 import { findExcludedElements } from './findExcludedElements';
 import {
 	MAIN_SELECTOR,
@@ -68,16 +69,31 @@ function ancestorsOf(
 	return ancestors;
 }
 
-function collectText(root: Element, excluded: ReadonlySet<Element>): string {
-	const ancestors: Set<Element> = ancestorsOf(excluded, root);
+function collectText(
+	root: Element,
+	excluded: ReadonlySet<Element>,
+	collapsed: ReadonlySet<Element>
+): string {
+	// A collapsed element must be reached node by node too, because the
+	// innerText of its ancestors leaves it out.
+	const ancestors: Set<Element> = ancestorsOf(
+		new Set([...excluded, ...collapsed]),
+		root
+	);
 	const parts: string[] = [];
 
 	const collect = (element: Element): void => {
-		if (
-			excluded.has(element) ||
-			element.matches(NON_RENDERED_SELECTOR) ||
-			!isRendered(element)
-		) {
+		if (excluded.has(element) || element.matches(NON_RENDERED_SELECTOR)) {
+			return;
+		}
+
+		if (collapsed.has(element)) {
+			parts.push(collapsedText(element, excluded));
+
+			return;
+		}
+
+		if (!isRendered(element)) {
 			return;
 		}
 
@@ -104,16 +120,26 @@ function collectText(root: Element, excluded: ReadonlySet<Element>): string {
 function collectHeadings(
 	root: Element,
 	tag: string,
-	excluded: ReadonlySet<Element>
+	excluded: ReadonlySet<Element>,
+	collapsed: ReadonlySet<Element>
 ): string[] {
 	const headings: string[] = [];
 
 	for (const heading of root.querySelectorAll(tag)) {
-		if (isInside(heading, excluded, root) || !isRendered(heading)) {
+		if (
+			isInside(heading, excluded, root) ||
+			(!isRendered(heading) && !isInside(heading, collapsed, root))
+		) {
 			continue;
 		}
 
-		const text: string = normalizeLine(renderedText(heading));
+		// Chrome hides closed <details> with content-visibility, which leaves
+		// innerText empty.
+		const text: string = normalizeLine(
+			isRendered(heading)
+				? renderedText(heading)
+				: collapsedText(heading, excluded)
+		);
 
 		if (text !== '') {
 			headings.push(text);
@@ -152,11 +178,13 @@ function readPage(
 	excluded: ReadonlySet<Element>,
 	title: string
 ): Page {
+	const collapsed: Set<Element> = findCollapsedElements(root, excluded);
+
 	return {
-		content: collectText(root, excluded),
+		content: collectText(root, excluded, collapsed),
 		title,
-		h1: collectHeadings(root, 'h1', excluded),
-		h2: collectHeadings(root, 'h2', excluded)
+		h1: collectHeadings(root, 'h1', excluded, collapsed),
+		h2: collectHeadings(root, 'h2', excluded, collapsed)
 	};
 }
 

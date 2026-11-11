@@ -24,14 +24,20 @@
    - Elements whose id or class names a consent banner (`cookie-banner`, `consent-bar`, `gdpr-popup`, `cookies-modal`…), if they hold at most half of the root's text. The pattern names banners, not cookie content, so a cookie policy's own `cookie-table` stays.
    - `position: fixed` or `sticky` containers, if they hold at most half of the root's text. Some sites scroll all their content inside one fixed container, and that container must stay. Only `div`, `section`, `aside`, `header`, `footer`, `nav`, `form`, `dialog` and custom elements are checked, because overlays are containers and computed styles are the main cost ([performance](#performance)).
    - Ligature icon fonts (`material-icons…`, `material-symbols…`). Their icon names are real text, such as `subject_black`.
-3. **Text:** a subtree without excluded elements contributes its whole `innerText`. Only the elements on the way to an excluded element are walked node by node. Script, style, noscript, template and SVG elements, and anything not rendered (`checkVisibility()`), are skipped. Hidden elements need that check because the `innerText` of a `display: none` element returns its raw text.
-4. **Sidebar fallback:** if the text has fewer than 200 characters, and an excluded `aside` or `[role="complementary"]` has at least 200 characters of visible text, the text and headings are read again with the largest such sidebar kept. Some sites (several Polish pharmacy shops, for example) wrap their whole content in `<aside id="content">`, which would otherwise leave nothing. Everything inside the kept sidebar is still checked, so a `nav` or consent banner in it stays out.
+3. **Text:** a subtree without excluded or collapsed elements contributes its whole `innerText`. Only the elements on the way to one are walked node by node. Script, style, noscript, template and SVG elements, and anything not rendered (`checkVisibility()`), are skipped. Hidden elements need that check because the `innerText` of a `display: none` element returns its raw text. `display: contents` elements count as rendered: `checkVisibility()` is false for them, but their children render.
+4. **Collapsed content:** text the markup marks as collapsed is read in place, although it's hidden. Legal pages often fold each section into an accordion, and the visible titles alone would leave little text.
+   - Closed `<details>` (with its `<summary>`), `[hidden="until-found"]`, and the panel named by `aria-controls` on an `[aria-expanded="false"]` button.
+   - Not a panel whose button has `aria-haspopup`, or that has `role="menu"`, `menubar`, `listbox`, `tree`, `dialog`, `alertdialog` or `tooltip`: those are menus and popups. Not a panel whose button sits in an excluded element (a header's menu button).
+   - Not one inside an excluded element, such as the cookie-details accordions in a consent tool's dialog. Excluded elements inside a panel stay out too.
+   - Hidden text has no layout, so it's read from the DOM, with a line break around each block element (`p`, `li`, `div`, `h1`–`h6`, `tr`…) and a space between table cells.
+   - Plain `display: none` without that markup stays out. It can't be told apart from menus, tabs, carousels and modals.
+5. **Sidebar fallback:** if the text has fewer than 200 characters, and an excluded `aside` or `[role="complementary"]` has at least 200 characters of visible text, the text and headings are read again with the largest such sidebar kept. Some sites (several Polish pharmacy shops, for example) wrap their whole content in `<aside id="content">`, which would otherwise leave nothing. Everything inside the kept sidebar is still checked, so a `nav` or consent banner in it stays out.
    - It runs only on near-empty pages, so pages with enough content never change.
    - Sidebars are measured by visible text (`innerText`), because hidden menus inflate `textContent`.
    - Headers, footers and navs never qualify. On a near-empty page they mostly hold a newsletter sign-up whose consent text ("the controller of your personal data is…") reads like a privacy policy. Dialogs, consent tools and overlays never qualify either.
-5. **Headings:** the `h1` and `h2` elements inside the root that aren't excluded and are rendered, one entry per heading.
-6. **Title:** `document.title`.
-7. **Normalising:** whitespace inside a line collapses to single spaces, private-use characters (icon-font glyphs) are removed, and empty lines are dropped. Line breaks stay, because word pairs never cross them.
+6. **Headings:** the `h1` and `h2` elements inside the root that aren't excluded and are rendered or collapsed, one entry per heading.
+7. **Title:** `document.title`.
+8. **Normalising:** whitespace inside a line collapses to single spaces, private-use characters (icon-font glyphs) are removed, and empty lines are dropped. Line breaks stay, because word pairs never cross them.
 
 `innerText` applies CSS `text-transform`, so headings styled in capitals come out in `UPPERCASE`. That's harmless, since the tokenizer lowercases everything.
 

@@ -233,8 +233,8 @@ Weights depend on the exact features of the package version that trained them, s
 
 | Language   | Code | AUC   | 99% precision from |
 | ---------- | ---- | ----- | ------------------ |
-| 🇺🇸 English | `en` | 0.928 | `p ≥ 0.901`        |
-| 🇵🇱 Polish  | `pl` | 0.973 | `p ≥ 0.859`        |
+| 🇺🇸 English | `en` | 0.929 | `p ≥ 0.912`        |
+| 🇵🇱 Polish  | `pl` | 0.973 | `p ≥ 0.860`        |
 
 ## Scope
 
