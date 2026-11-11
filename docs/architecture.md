@@ -18,6 +18,7 @@ Update this tree when files are added or removed.
 ├── tsdown.config.ts         builds minified dist/index.js + one chunk per weights file, and dist/extractor.iife.js
 ├── vitest.config.ts         three test projects: unit-node (Node), unit-browser and e2e (headless Chromium)
 ├── LICENSE                  MIT
+├── README.md                usage, held-out results, contributing
 ├── dist/                    gitignored: npm run build output
 ├── src/
 │   ├── index.ts             exports only predictWebLegalDocumentProbability, configure and their types

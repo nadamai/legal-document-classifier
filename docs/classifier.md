@@ -46,7 +46,7 @@ configure({
 	weights: {
 		de: 'https://cdn.example.com/legal-weights/de.json',
 		en: new URL('./weights/en.json', import.meta.url),
-		pl: { bias: -1, weights: { regulamin: 2.1 } }
+		cs: { bias: -1, weights: { privacy: 2.1 } }
 	}
 });
 

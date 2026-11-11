@@ -1,7 +1,7 @@
 {
   "name": "@hamurabi/legal-document-classifier",
   "version": "1.0.0",
-  "description": "npm package for classifying webpage content as web legal documents",
+  "description": "A simple logistic regression in your browser for classifying webpages as web legal documents",
   "license": "MIT",
   "author": "Hamurabi",
   "type": "module",
