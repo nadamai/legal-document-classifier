@@ -16,7 +16,7 @@
     "zero-dependency",
     "browser",
     "dom",
-	"hamurabi"
+    "hamurabi"
   ],
   "license": "MIT",
   "author": {
@@ -24,7 +24,16 @@
     "url": "https://hamurabi.app"
   },
   "type": "module",
-  "main": "index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
   "bugs": {
     "url": "https://github.com/nadamai/legal-document-classifier/issues"
   },
@@ -35,6 +44,7 @@
   "scripts": {
     "typecheck": "tsc && tsc -p tools && tsc -p test",
     "build": "tsdown",
+    "prepublishOnly": "npm run build",
     "prepare": "husky",
     "prettier": "pretty-quick --staged --pattern \"{src,tools,test}/**/*.ts\"",
     "prettier:check": "prettier --check \"{src,tools,test}/**/*.ts\"",

@@ -13,7 +13,7 @@ Update this tree when files are added or removed.
 ├── AGENTS.md                instructions for coding agents
 ├── CLAUDE.md                imports AGENTS.md
 ├── docs/                    detail behind AGENTS.md (this file, classifier, extraction, training, data and licensing)
-├── package.json             ESM ("type": "module"), "main": "index.ts", no exports field
+├── package.json             ESM ("type": "module"), exports dist/index.js + .d.ts, publishes only dist/
 ├── tsconfig.json
 ├── tsdown.config.ts         builds minified dist/index.js + one chunk per weights file, and dist/extractor.iife.js
 ├── vitest.config.ts         three test projects: unit-node (Node), unit-browser and e2e (headless Chromium)
@@ -78,7 +78,7 @@ Update this tree when files are added or removed.
   - Dynamic imports become separate chunks only with ES modules.
   - Node 20.19+ and 22.12+ can `require()` an ES module, so CommonJS consumers are still covered.
   - A dual build would double the output and risk loading the package twice.
-- Target `package.json` shape:
+- `package.json` shape:
 
   ```json
   {
@@ -112,7 +112,7 @@ Chosen for speed. Installed, all pinned exact: `typescript` 7.0.2, `tsdown` 0.23
 - **Build: tsdown**, built on Rolldown and Oxc (Rust).
   - It bundles `src/` into `dist/` and writes the `.d.ts` files.
   - With `isolatedDeclarations` on, it writes each `.d.ts` from its own source file without running the type checker.
-- **tsdown output extensions.** By default tsdown writes `.mjs` and `.d.mts`, because `fixedExtension` defaults to true for `platform: 'node'`. `tsdown.config.ts` sets `fixedExtension: false`, so the output is `dist/index.js` and `dist/index.d.ts`, as in the target `package.json` shape above.
+- **tsdown output extensions.** By default tsdown writes `.mjs` and `.d.mts`, because `fixedExtension` defaults to true for `platform: 'node'`. `tsdown.config.ts` sets `fixedExtension: false`, so the output is `dist/index.js` and `dist/index.d.ts`, as in the `package.json` shape above.
 - **Minified, without comments.** `tsdown.config.ts` sets `minify: true` and `outputOptions: { comments: false }`.
   - `dist/*.js` contains no comments at all, not even `@__PURE__` annotations.
   - The `.d.ts` files keep their JSDoc, which is how consumers see the docs in their editor.
