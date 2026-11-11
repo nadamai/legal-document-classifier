@@ -2,6 +2,22 @@
   "name": "@hamurabi/legal-document-classifier",
   "version": "1.0.0",
   "description": "A simple logistic regression in your browser for classifying webpages as web legal documents",
+  "keywords": [
+    "legal",
+    "legal-document",
+    "terms-of-service",
+    "terms-and-conditions",
+    "privacy-policy",
+    "cookie-policy",
+    "classifier",
+    "text-classification",
+    "logistic-regression",
+    "machine-learning",
+    "zero-dependency",
+    "browser",
+    "dom",
+	"hamurabi"
+  ],
   "license": "MIT",
   "author": {
     "name": "Hamurabi",
