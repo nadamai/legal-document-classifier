@@ -22,13 +22,8 @@ const DEFAULT_LANGUAGE: SupportedLanguage = 'en';
  * 	);
  */
 export async function predictWebLegalDocumentProbability<
-	L extends string = SupportedLanguage
->(
-	document: Document,
-	// NoInfer keeps `L` at its default unless the caller names it, so the
-	// argument can't widen it.
-	language?: NoInfer<L>
-): Promise<number> {
+	Language extends string = SupportedLanguage
+>(document: Document, language?: NoInfer<Language>): Promise<number> {
 	return predictWebLegalDocumentFeaturesProbability(
 		extractPage(document),
 		language ?? DEFAULT_LANGUAGE
