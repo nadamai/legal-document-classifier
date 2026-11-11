@@ -124,30 +124,9 @@ Sets custom weights per language, globally, for every later prediction.
 
 **Throws:** for an invalid weights object.
 
-### `SUPPORTED_LANGUAGES`
-
-```ts
-const SUPPORTED_LANGUAGES: readonly ['en', 'pl'];
-```
-
-The language codes with bundled weights. Use it to check a detected language before scoring:
-
-```ts
-import { SUPPORTED_LANGUAGES, predictWebLegalDocumentProbability, type SupportedLanguage } from '@hamurabi/legal-document-classifier';
-
-const isSupportedLanguage = (language: string): language is SupportedLanguage =>
-    SUPPORTED_LANGUAGES.includes(language as SupportedLanguage);
-
-if (isSupportedLanguage(language)) {
-    const p = await predictWebLegalDocumentProbability(document, language);
-}
-```
-
 ### Types
 
 ```ts
-type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]; // 'en' | 'pl'
-
 type Weights = { 
     bias: number; 
     weights: Record<string, number> 
