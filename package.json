@@ -3,9 +3,19 @@
   "version": "1.0.0",
   "description": "A simple logistic regression in your browser for classifying webpages as web legal documents",
   "license": "MIT",
-  "author": "Hamurabi",
+  "author": {
+    "name": "Hamurabi",
+    "url": "https://hamurabi.app"
+  },
   "type": "module",
   "main": "index.ts",
+  "bugs": {
+    "url": "https://github.com/nadamai/legal-document-classifier/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nadamai/legal-document-classifier.git"
+  },
   "scripts": {
     "typecheck": "tsc && tsc -p tools && tsc -p test",
     "build": "tsdown",
