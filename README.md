@@ -215,11 +215,13 @@ Weights depend on the exact features of the package version that trained them, s
 | 🇺🇸 English | `en` | 0.928 | `p ≥ 0.893`        |
 | 🇵🇱 Polish  | `pl` | 0.975 | `p ≥ 0.860`        |
 
-
 ## Scope
 
 The package is built to detect web legal documents. With custom weights you can train it to detect other kinds of pages, but keep in mind the tokenizer, features and extraction are tuned for legal text, and changes to them will always favour that purpose.
 
+## Used by the Hamurabi Chrome extension
+
+This package is developed and maintained as part of the [Hamurabi](https://hamurabi.app) project. It's used in the [Hamurabi Chrome extension](https://chromewebstore.google.com/detail/hamurabi/mhefkopgknnhkjonngnknkcfhfmallhh), where it decides when to show the rating of a web legal document. Feel welcome to check the extension out!
 
 ## License
 
