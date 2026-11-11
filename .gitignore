@@ -205,3 +205,4 @@ $RECYCLE.BIN/
 training/data
 training/.venv
 __pycache__/
+.vitest/
