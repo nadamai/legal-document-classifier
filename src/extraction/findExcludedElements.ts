@@ -2,9 +2,10 @@ import { isElement, textLength } from './dom';
 import {
 	CONSENT_NAME,
 	CONSENT_TOOL_SELECTOR,
-	EXCLUDED_SELECTOR,
+	DIALOG_SELECTOR,
 	HEADER_FOOTER_SELECTOR,
 	ICON_FONT_SELECTOR,
+	LANDMARK_SELECTOR,
 	SECTIONING_SELECTOR
 } from './selectors';
 
@@ -63,25 +64,54 @@ function skipSubtree(walker: TreeWalker): Node | null {
 	}
 }
 
-export function findExcludedElements(root: Element): Set<Element> {
+function findLandmarks(root: Element): Element[] {
+	const headersAndFooters: Element[] = [
+		...root.querySelectorAll(HEADER_FOOTER_SELECTOR)
+	].filter(
+		(element: Element): boolean =>
+			!element.parentElement?.closest(SECTIONING_SELECTOR)
+	);
+
+	return [...root.querySelectorAll(LANDMARK_SELECTOR), ...headersAndFooters];
+}
+
+function isOverlay(
+	element: Element,
+	view: Window | null,
+	maxOverlayLength: number
+): boolean {
+	return (
+		(hasConsentName(element) || isFixedOrSticky(element, view)) &&
+		textLength(element) <= maxOverlayLength
+	);
+}
+
+/**
+ * Checks only `scope` (the root by default), but measures overlays against the
+ * whole root. A scope that is itself an overlay comes back as the only
+ * element.
+ */
+export function findExcludedElements(
+	root: Element,
+	scope: Element = root
+): Set<Element> {
 	const document: Document = root.ownerDocument;
 	const view: Window | null = document.defaultView;
 	const maxOverlayLength: number = textLength(root) * MAX_OVERLAY_TEXT_SHARE;
 
-	const excluded: Set<Element> = new Set([
-		...root.querySelectorAll(EXCLUDED_SELECTOR),
-		...root.querySelectorAll(CONSENT_TOOL_SELECTOR),
-		...root.querySelectorAll(ICON_FONT_SELECTOR)
-	]);
-
-	for (const element of root.querySelectorAll(HEADER_FOOTER_SELECTOR)) {
-		if (!element.parentElement?.closest(SECTIONING_SELECTOR)) {
-			excluded.add(element);
-		}
+	if (scope !== root && isOverlay(scope, view, maxOverlayLength)) {
+		return new Set([scope]);
 	}
 
+	const excluded: Set<Element> = new Set([
+		...findLandmarks(scope),
+		...scope.querySelectorAll(DIALOG_SELECTOR),
+		...scope.querySelectorAll(CONSENT_TOOL_SELECTOR),
+		...scope.querySelectorAll(ICON_FONT_SELECTOR)
+	]);
+
 	const walker: TreeWalker = document.createTreeWalker(
-		root,
+		scope,
 		NodeFilter.SHOW_ELEMENT
 	);
 	let node: Node | null = walker.nextNode();
@@ -89,9 +119,7 @@ export function findExcludedElements(root: Element): Set<Element> {
 	while (node !== null) {
 		if (
 			isElement(node) &&
-			(excluded.has(node) ||
-				((hasConsentName(node) || isFixedOrSticky(node, view)) &&
-					textLength(node) <= maxOverlayLength))
+			(excluded.has(node) || isOverlay(node, view, maxOverlayLength))
 		) {
 			excluded.add(node);
 			node = skipSubtree(walker);

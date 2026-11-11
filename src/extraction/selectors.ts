@@ -1,11 +1,17 @@
-export const EXCLUDED_SELECTOR: string = [
+export const LANDMARK_SELECTOR: string = [
 	'nav',
 	'aside',
-	'dialog',
 	'[role="banner"]',
 	'[role="navigation"]',
 	'[role="contentinfo"]',
-	'[role="complementary"]',
+	'[role="complementary"]'
+].join(', ');
+
+// The landmarks that some sites misuse as the wrapper of their whole content.
+export const SIDEBAR_SELECTOR: string = 'aside, [role="complementary"]';
+
+export const DIALOG_SELECTOR: string = [
+	'dialog',
 	'[role="dialog"]',
 	'[role="alertdialog"]',
 	'[aria-modal="true"]'

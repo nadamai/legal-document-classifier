@@ -151,6 +151,78 @@ describe('extractPage: excluded elements', () => {
 	});
 });
 
+describe('extractPage: sidebar fallback', () => {
+	it('reads an aside that holds the whole content', async () => {
+		const page: Page = await extract(
+			`<header><nav>Shop Contact</nav></header><aside id="content"><h1>Terms of service</h1><h2>Orders</h2><p>${LONG_TEXT}</p></aside><footer>Copyright</footer>`
+		);
+
+		expect(page.content).toContain('These terms govern');
+		expect(page.h1).toEqual(['Terms of service']);
+		expect(page.h2).toEqual(['Orders']);
+		expect(page.content).not.toContain('Shop Contact');
+		expect(page.content).not.toContain('Copyright');
+	});
+
+	it('reads an element with role="complementary" that holds the content', async () => {
+		const page: Page = await extract(
+			`<div role="complementary"><p>${LONG_TEXT}</p></div>`
+		);
+
+		expect(page.content).toContain('These terms govern');
+	});
+
+	it('picks the sidebar with the most visible text', async () => {
+		const page: Page = await extract(
+			`<aside><a href="/">Filters</a><div style="display: none">${LONG_TEXT.repeat(3)}</div></aside><aside><p>Visible policy text. ${LONG_TEXT}</p></aside>`
+		);
+
+		expect(page.content).toContain('Visible policy text.');
+		expect(page.content).not.toContain('Filters');
+	});
+
+	it('still drops what is excluded inside the kept sidebar', async () => {
+		const page: Page = await extract(
+			`<aside><nav>Section menu</nav><p>${LONG_TEXT}</p><div class="cookie-banner">We use cookies</div></aside>`
+		);
+
+		expect(page.content).toContain('These terms govern');
+		expect(page.content).not.toContain('Section menu');
+		expect(page.content).not.toContain('We use cookies');
+	});
+
+	it('leaves pages with enough content unchanged', async () => {
+		const page: Page = await extract(
+			`<aside><p>${LONG_TEXT}</p></aside><p>${LONG_TEXT.slice(0, 300)}</p><footer>Privacy policy Terms</footer>`
+		);
+
+		expect(page.content).toBe(LONG_TEXT.slice(0, 300).trim());
+	});
+
+	it('leaves a near-empty page empty when every sidebar is short', async () => {
+		const page: Page = await extract(
+			'<p>Loading…</p><aside>Related: Privacy policy · Terms of service</aside>'
+		);
+
+		expect(page.content).toBe('Loading…');
+	});
+
+	it.each([
+		['a page-level footer', `<footer><p>${LONG_TEXT}</p></footer>`],
+		['a page-level header', `<header><p>${LONG_TEXT}</p></header>`],
+		['a nav', `<nav><p>${LONG_TEXT}</p></nav>`],
+		['an open dialog', `<dialog open><p>${LONG_TEXT}</p></dialog>`],
+		[
+			'a consent tool',
+			`<div id="onetrust-consent-sdk"><p>${LONG_TEXT}</p></div>`
+		]
+	])('never falls back to %s', async (_name: string, element: string) => {
+		const page: Page = await extract(`<p>Loading…</p>${element}`);
+
+		expect(page.content).toBe('Loading…');
+	});
+});
+
 describe('extractPage: text', () => {
 	it('skips text that is not rendered', async () => {
 		const page: Page = await extract(
