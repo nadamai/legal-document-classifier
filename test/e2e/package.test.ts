@@ -58,6 +58,7 @@ afterEach(() => {
 describe('built package', () => {
 	it('exports only the public API', () => {
 		expect(Object.keys(pkg).sort()).toEqual([
+			'SUPPORTED_LANGUAGES',
 			'configure',
 			'predictWebLegalDocumentProbability'
 		]);

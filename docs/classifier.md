@@ -16,7 +16,7 @@ The second and third rows are the most valuable negatives. They look like legal 
 
 ## Public API
 
-`src/index.ts` exports two functions, `predictWebLegalDocumentProbability` and [`configure`](#custom-weights), and the types `SupportedLanguage`, `Configuration`, `WeightsSource` and `Weights`:
+`src/index.ts` exports two functions, `predictWebLegalDocumentProbability` and [`configure`](#custom-weights), the constant `SUPPORTED_LANGUAGES` (`['en', 'pl']`, the bundled languages), and the types `SupportedLanguage`, `Configuration`, `WeightsSource` and `Weights`:
 
 ```ts
 predictWebLegalDocumentProbability<L extends string = SupportedLanguage>(
@@ -76,7 +76,7 @@ await predictWebLegalDocumentProbability<SupportedLanguage | 'de'>(document, 'de
 ## Language handling
 
 - The caller passes the language code and decides how to determine it. Without one, `predictWebLegalDocumentProbability` uses `en`.
-- `language` is typed by the type parameter `L`, which defaults to `SupportedLanguage`, the codes with a bundled weights file (`en` and `pl`). `NoInfer<L>` stops TypeScript from widening `L` from the argument, so without a type argument a code from a detector (a `string`) or a custom language fails the type-check. Naming the set, such as `<SupportedLanguage | 'de'>` or `<string>`, allows more. Consumers need TypeScript 5.4 or later for `NoInfer`. A new bundled language needs its JSON file and its code added to `SupportedLanguage`.
+- `language` is typed by the type parameter `L`, which defaults to `SupportedLanguage`, the codes with a bundled weights file (`en` and `pl`), derived from `SUPPORTED_LANGUAGES` in `src/model/supportedLanguages.ts`. Callers can check a detected code against `SUPPORTED_LANGUAGES` at runtime. `NoInfer<L>` stops TypeScript from widening `L` from the argument, so without a type argument a code from a detector (a `string`) or a custom language fails the type-check. Naming the set, such as `<SupportedLanguage | 'de'>` or `<string>`, allows more. Consumers need TypeScript 5.4 or later for `NoInfer`. A new bundled language needs its JSON file and its code added to `SUPPORTED_LANGUAGES`.
 - Weights are picked by language in `src/model/loadWeights.ts`: custom weights first, else the bundled file. A language with neither (for example `jp`) throws `Unsupported language: "jp"`, with the failed import as its `cause`. It never falls back to another language's weights, or from custom weights to the bundled ones. There's no multilingual model.
 - The weights are loaded before the page is scored, so a language without weights, or custom weights that fail to load, throw even on a page without text.
 - Open: how language codes are normalised. Codes are matched exactly, so a code with a region (for example `en-GB`) isn't supported; the caller has to pass `en`.
@@ -172,7 +172,7 @@ await predictWebLegalDocumentProbability<SupportedLanguage | 'de'>(document, 'de
 - The example above shows the shape. The real files hold the 2,000 strongest weights, rounded to 4 significant digits: `en.json` is about 45 KB and `pl.json` about 47 KB ([training.md](training.md#pipeline)).
 - `bias` is required. A file without it makes `p` come out as `NaN`.
 - `src/model/loadWeights.ts` loads ``import(`../weights/${language}.json`)``. The build turns that into one chunk per weights file, fetched the first time it's needed ([architecture.md](architecture.md#toolchain)).
-- **Adding a bundled language means adding its JSON file and its code to `SupportedLanguage`.** No other code changes. A language without a file needs [custom weights](#custom-weights), or it throws ([language handling](#language-handling)).
+- **Adding a bundled language means adding its JSON file and its code to `SUPPORTED_LANGUAGES`.** No other code changes, and a unit test fails if the two don't match. A language without a file needs [custom weights](#custom-weights), or it throws ([language handling](#language-handling)).
 - The bundled JSON's shape isn't type-checked, because an import with a variable path is typed as `any`. Custom weights are checked at runtime instead.
 - Only non-zero weights are listed.
 - Weights are sorted by value, highest first: the top of the file shows what marks a legal document, and the bottom what marks a standard page. The classifier looks weights up by name, so the order doesn't affect `p`.

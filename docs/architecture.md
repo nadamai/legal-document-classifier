@@ -21,7 +21,7 @@ Update this tree when files are added or removed.
 ├── README.md                usage, held-out results, contributing
 ├── dist/                    gitignored: npm run build output
 ├── src/
-│   ├── index.ts             exports only predictWebLegalDocumentProbability, configure and their types
+│   ├── index.ts             exports only predictWebLegalDocumentProbability, configure, SUPPORTED_LANGUAGES and their types
 │   ├── predictWebLegalDocumentProbability.ts   the public function: document + language (default en) → extractPage → p
 │   ├── configure.ts         the public setup: global custom weights per language (URL or object)
 │   ├── extraction/          extractPage: rendered document → Page (see extraction.md)
@@ -29,7 +29,8 @@ Update this tree when files are added or removed.
 │   ├── model/               predictWebLegalDocumentFeaturesProbability.ts (Page → features → p),
 │   │                        loadWeights.ts (custom weights, else import(`../weights/${language}.json`), throws for other languages),
 │   │                        customWeights.ts (configured sources, fetch and cache), isWeights.ts (runtime shape check),
-│   │                        predictProbability.ts (weighted sum → sigmoid), sigmoid.ts
+│   │                        predictProbability.ts (weighted sum → sigmoid), sigmoid.ts,
+│   │                        supportedLanguages.ts (SUPPORTED_LANGUAGES: codes with a bundled weights file)
 │   ├── types/               one main type per file, plus its aliases: Page, Weights, FeatureVector, Token, SupportedLanguage, Configuration
 │   └── weights/             <lang>.json only ({ bias, weights: token → weight })
 ├── tools/
@@ -118,7 +119,7 @@ Chosen for speed. Installed, all pinned exact: `typescript` 7.0.2, `tsdown` 0.23
   - The `.d.ts` files keep their JSDoc, which is how consumers see the docs in their editor.
 - **Weights chunks.** `tsdown.config.ts` adds two Rolldown plugins, `dynamicImportVarsPlugin` and `importGlobPlugin`.
   - Together they turn ``import(`../weights/${language}.json`)`` in `src/model/loadWeights.ts` into one chunk per file in `src/weights/`, plus a lookup table of those chunks.
-  - A new weights file gets its chunk without any change to `loadWeights`; only `SupportedLanguage` needs its code. A language without a file isn't in the table, so its import fails and `loadWeights` throws.
+  - A new weights file gets its chunk without any change to `loadWeights`; only `SUPPORTED_LANGUAGES` needs its code. A language without a file isn't in the table, so its import fails and `loadWeights` throws.
   - The path must keep a fixed folder and extension, with the variable as the file name only. Otherwise the plugins can't expand it.
   - Without the plugins, tsdown leaves the variable import untouched, and the built package throws for every language.
   - Both plugins come from `rolldown/experimental` and may change between Rolldown releases. That's why `rolldown` is a direct dev dependency, pinned to the exact version tsdown uses (1.3.0).

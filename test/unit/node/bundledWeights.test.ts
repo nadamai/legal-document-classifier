@@ -1,5 +1,7 @@
+import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { predictWebLegalDocumentFeaturesProbability as score } from '../../../src/model/predictWebLegalDocumentFeaturesProbability';
+import { SUPPORTED_LANGUAGES } from '../../../src/model/supportedLanguages';
 import {
 	ENGLISH_PRIVACY_POLICY,
 	ENGLISH_PRODUCT_PAGE,
@@ -12,7 +14,20 @@ import {
 const MIN_LEGAL_P: number = 0.9;
 const MAX_ORDINARY_P: number = 0.5;
 
+const WEIGHTS_DIRECTORY: URL = new URL(
+	'../../../src/weights/',
+	import.meta.url
+);
+
 describe('bundled weights', () => {
+	it('exist exactly for SUPPORTED_LANGUAGES', () => {
+		const languages: string[] = readdirSync(WEIGHTS_DIRECTORY)
+			.filter((file: string): boolean => file.endsWith('.json'))
+			.map((file: string): string => file.slice(0, -'.json'.length));
+
+		expect(languages.sort()).toEqual([...SUPPORTED_LANGUAGES].sort());
+	});
+
 	it('score an obvious English privacy policy high', async () => {
 		expect(await score(ENGLISH_PRIVACY_POLICY, 'en')).toBeGreaterThan(
 			MIN_LEGAL_P
