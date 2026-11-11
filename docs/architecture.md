@@ -42,7 +42,9 @@ Update this tree when files are added or removed.
 │   ├── common/              shared by the tests: fixtures/ (hand-written pages and weights), snapshots/, renderPage.ts
 │   └── tsconfig.json        extends the root config with Node types, also covers vitest.config.ts
 └── training/
-    ├── requirements.txt     pinned: scikit-learn 1.9.1, numpy 2.5.4, playwright 1.64.1, protego 0.7.0, publicsuffixlist 1.1.2.20261109 (Python 3.12+)
+    ├── requirements.txt     pinned: scikit-learn 1.9.1, numpy 2.5.4, playwright 1.64.1, protego 0.7.0, publicsuffixlist 1.1.2.20261109, pytest 9.2.0 (Python 3.12+)
+    ├── pytest.ini           puts training/ on the import path for training/tests/
+    ├── tests/               pytest: npm run test:training (see testing.md)
     ├── setup.sh             npm run train:setup: picks a Python 3.12+, creates .venv, installs Chromium
     ├── common.py            paths, labels, CSV format, what counts as a site, the per-language loop
     ├── scrape.py            data/urls/<lang>/*.txt → extractor.iife.js in headless Chromium → data/contents/<lang>/*.csv

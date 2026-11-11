@@ -4,14 +4,14 @@ Python fits the weights. Turning text into features is TypeScript ([architecture
 
 ## Tooling
 
-- **Python** in a virtual environment at `training/.venv` (gitignored), with pinned `scikit-learn`, `numpy`, `playwright`, `protego` and `publicsuffixlist` from `training/requirements.txt`. `npm run train:setup` (`training/setup.sh`) creates it, and then downloads Playwright's own Chromium build (`playwright install chromium`).
+- **Python** in a virtual environment at `training/.venv` (gitignored), with pinned `scikit-learn`, `numpy`, `playwright`, `protego`, `publicsuffixlist` and `pytest` from `training/requirements.txt`. `npm run train:setup` (`training/setup.sh`) creates it, and then downloads Playwright's own Chromium build (`playwright install chromium`).
   - **Python 3.12 or newer,** because numpy 2.5 needs it. `train:setup` takes the first that's new enough of:
     1. `$PYTHON`, if set: `PYTHON=/path/to/python3 npm run train:setup`
     2. the global `python3`
     3. the newest `python3.X` on `PATH`. macOS's own `python3` is 3.9, so there it finds Homebrew's (`brew install python`).
 
     With none of them new enough, it stops and says how to install one.
-  - Pinned: `numpy==2.5.4`, `scikit-learn==1.9.1`, `playwright==1.64.1`, `protego==0.7.0` (the `robots.txt` parser) and `publicsuffixlist==1.1.2.20261109` (what counts as one site). The last one's version is the date of its bundled list, so updating it can change which pages count as one site. They're tested with Python 3.14. A Python released after a pinned package may have no prebuilt wheel for it yet, so pip would try to build it from source. Point `PYTHON` at an older one then.
+  - Pinned: `numpy==2.5.4`, `scikit-learn==1.9.1`, `playwright==1.64.1`, `protego==0.7.0` (the `robots.txt` parser) `publicsuffixlist==1.1.2.20261109` (what counts as one site) and `pytest==9.2.0` (`npm run test:training`, [testing.md](testing.md#training-tests)). The last one's version is the date of its bundled list, so updating it can change which pages count as one site. They're tested with Python 3.14. A Python released after a pinned package may have no prebuilt wheel for it yet, so pip would try to build it from source. Point `PYTHON` at an older one then.
   - An existing `training/.venv` is reused. To switch Python, delete it and run `npm run train:setup` again.
   - VS Code: `.vscode/settings.json` points the Python extension at `training/.venv/bin/python`, so Pylance resolves `sklearn`. If imports are still underlined, run "Python: Select Interpreter" once and pick that path. VS Code remembers an earlier choice over the default.
 - **tsx** runs `tools/featurize.ts` straight from source ([architecture.md](architecture.md#toolchain)).

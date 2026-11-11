@@ -42,19 +42,20 @@
     "url": "git+https://github.com/nadamai/legal-document-classifier.git"
   },
   "scripts": {
-    "typecheck": "tsc && tsc -p tools && tsc -p test",
-    "build": "tsdown",
-    "prepublishOnly": "npm run build",
-    "prepare": "husky",
-    "prettier": "pretty-quick --staged --pattern \"{src,tools,test}/**/*.ts\"",
-    "prettier:check": "prettier --check \"{src,tools,test}/**/*.ts\"",
-    "test": "npm run build && vitest run",
-    "scrape": "npm run build && training/.venv/bin/python training/scrape.py",
-    "scrape:all": "npm run build && training/.venv/bin/python training/scrape_all.py",
-    "train:setup": "sh training/setup.sh",
-    "train": "training/.venv/bin/python training/train.py",
-    "train:all": "training/.venv/bin/python training/train_all.py",
-    "evaluate": "training/.venv/bin/python training/evaluate.py"
+	"build": "tsdown",
+	"evaluate": "training/.venv/bin/python training/evaluate.py",
+	"prepare": "husky",
+	"prepublishOnly": "npm run build",
+	"prettier": "pretty-quick --staged --pattern \"{src,tools,test}/**/*.ts\"",
+	"prettier:check": "prettier --check \"{src,tools,test}/**/*.ts\"",
+	"scrape": "npm run build && training/.venv/bin/python training/scrape.py",
+	"scrape:all": "npm run build && training/.venv/bin/python training/scrape_all.py",
+	"test": "npm run build && vitest run",
+	"test:training": "npm run build && training/.venv/bin/python -m pytest training",
+	"train": "training/.venv/bin/python training/train.py",
+	"train:all": "training/.venv/bin/python training/train_all.py",
+	"train:setup": "sh training/setup.sh",
+	"typecheck": "tsc && tsc -p tools && tsc -p test"
   },
   "devDependencies": {
     "@types/node": "26.6.6",

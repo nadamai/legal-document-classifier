@@ -65,6 +65,7 @@ Do not break these without the maintainer's explicit agreement.
 | `npm run prettier:check` | Checks the formatting of `src/`, `tools/` and `test/`     |
 | `npm run prettier`       | Formats staged `.ts` files in `src/`, `tools/` and `test/` (pretty-quick) |
 | `npm test`               | Builds, then runs Vitest: unit tests in Node and in headless Chromium, and e2e tests of the built package ([docs/testing.md](docs/testing.md)) |
+| `npm run test:training`  | Builds, then runs pytest on `training/` in `training/.venv`: scraping rules, CSV format, fitting, weights export, evaluation folds ([docs/testing.md](docs/testing.md#training-tests)) |
 | `npx tsx <file>.ts`      | Runs TypeScript source, e.g. a manual check (`npx tsx` alone starts a REPL) |
 | `npm run train:setup`    | Creates `training/.venv` with Python 3.12+ (`$PYTHON`, else `python3`, else the newest `python3.X`), installs `training/requirements.txt` and Playwright's Chromium |
 | `npm run scrape [-- <lang> …]` | Builds, then scrapes `training/data/urls/<lang>/*.txt` into `training/data/contents/<lang>/*.csv` (default `en`), skipping URLs already there |
