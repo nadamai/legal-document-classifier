@@ -4,17 +4,13 @@
 [![license](https://img.shields.io/npm/l/@hamurabi/legal-document-classifier)](./LICENSE)
 [![CI](https://github.com/nadamai/legal-document-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/nadamai/legal-document-classifier/actions/workflows/ci.yml)
 
-An npm package that tells whether a web page is a web legal document, such as a website's terms of service, privacy policy, cookie policy or store rules, right in the browser. No server, no WebAssembly and no runtime dependencies.
+A zero-dependency npm package that tells whether a DOM document is a web legal document, such as a website's terms of service, privacy policy, cookie policy or store rules, right in the browser. No server, WebAssembly or runtime dependencies.
 
-Give it a rendered page's `document`, and it returns the probability `p` (0–1) that the page is a legal document. It reads the page's main content, leaving out navigation, footers, overlays and cookie banners, and scores it with a small per-language model: about 3 KB gzipped of code, plus about 14 KB gzipped of weights for each language, loaded only when that language is first used. English (`en`) and Polish (`pl`) are bundled, and you can [bring your own weights](#other-languages-and-custom-weights) for any language.
+While it may also give high scores to other legal texts, such as property or vehicle sale contracts, it's meant for web legal documents only.
 
-| Page | Result |
-| --- | --- |
-| a legal document itself: terms of service, privacy policy, cookie policy, store rules | high `p` |
-| a page about a legal topic that isn't itself a legal document | low `p` |
-| a list of legal documents (mostly links to them) | low `p` |
-| an imprint, a statute or a contract template | low `p` |
-| an ordinary page: home, product, article, help, login | low `p` |
+## How it works
+
+Give it a rendered page's `document`, and it returns the probability `p` in `[0, 1]` that the page is a web legal document. It reads the page's title and main content, leaving out navigation, footers, overlays and cookie banners, and scores it with a small per-language logistic regression model. The language-specific weights are lazily loaded only when being used for the first time.
 
 ## Installation
 
@@ -24,95 +20,61 @@ npm install @hamurabi/legal-document-classifier
 
 ## Examples
 
-### Scoring the current page
+### Scoring a document
 
 ```ts
 import { predictWebLegalDocumentProbability } from '@hamurabi/legal-document-classifier';
 
-const p = await predictWebLegalDocumentProbability(document, 'en');
+const p = await predictWebLegalDocumentProbability(document);
 
 if (p >= 0.9) {
-	// Very likely a legal document.
+	// Most likely a web legal document
 }
 ```
 
-The page must be rendered in a real browser, because extraction relies on layout and computed styles. That covers a page's own scripts, injected scripts and automated browsers such as Playwright or Puppeteer, but not `jsdom` or a `DOMParser` document. The page is never modified.
+The content extraction relies on the layout and computed styles, so it reads the page the way a visitor sees it, skipping hidden text and fixed overlays such as cookie banners. The page is never modified.
 
-The language defaults to `en`. The library doesn't detect it: pass the page's language yourself, and map or skip languages without weights. A code from a detector is a `string`, so narrow it first:
+### Scoring a non-English document
 
 ```ts
-import {
-	predictWebLegalDocumentProbability,
-	type SupportedLanguage
-} from '@hamurabi/legal-document-classifier';
+import { predictWebLegalDocumentProbability } from '@hamurabi/legal-document-classifier';
 
-function isSupported(code: string): code is SupportedLanguage {
-	return code === 'en' || code === 'pl';
-}
+const p = await predictWebLegalDocumentProbability(document, 'pl');
 
-const code = document.documentElement.lang.slice(0, 2).toLowerCase();
-
-if (isSupported(code)) {
-	const p = await predictWebLegalDocumentProbability(document, code);
+if (p >= 0.9) {
+	// Most likely a Polish web legal document
 }
 ```
 
-### Choosing a threshold
+To score non-English documents provide a lowercase two-letter ISO 639-1 language code. You can also introduce your own [custom languages](#custom-languages-and-weights).
 
-The library returns `p` only, with no yes/no answer, so you choose where to cut for your own trade-off. A false positive usually costs more than a miss, so start from a threshold with high precision. Measured with `npm run evaluate` on sites the model never saw during training:
+Since there're many possible methods of establishing the page's language, it's left to the developer's choice. 
 
-| Language | Held-out pages (sites) | AUC | 99% precision from | Legal pages found there |
-| --- | --- | --- | --- | --- |
-| `en` | 1,153 (533) | 0.928 | `p ≥ 0.893` | 73.2% |
-| `pl` | 3,348 (1,163) | 0.975 | `p ≥ 0.860` | 83.3% |
+To see the list of all available languages please refer to: [Supported languages](#supported-languages).
 
-Thresholds differ per language and move with every retrain, so check them again after updating the package.
-
-### Other languages and custom weights
-
-`configure` sets weights of your own, globally, for every later call. A language maps to the URL of a weights JSON file, fetched on first use and cached, or to a weights object. Custom weights replace the bundled ones for their language, and can add languages without bundled weights:
+### Custom languages and weights
 
 ```ts
-import {
-	configure,
-	predictWebLegalDocumentProbability,
-	type SupportedLanguage
-} from '@hamurabi/legal-document-classifier';
+import { configure, predictWebLegalDocumentProbability } from '@hamurabi/legal-document-classifier';
 
 configure({
 	weights: {
-		de: 'https://cdn.example.com/legal-weights/de.json',
-		cs: '/weights/cs.json',
-		en: { bias: -1, weights: { privacy: 2.1, 'privacy policy': 1.4 } }
+		fr: '/weights/fr.json',
+		de: 'https://example.com/weights/de.json',
+		pl: { 
+			bias: -1, 
+			weights: { 
+				'polityka': 1.4, 
+				'polityka prywatności': 2.1 
+			} 
+		}
 	}
 });
 
-const p = await predictWebLegalDocumentProbability<SupportedLanguage | 'de'>(
-	document,
-	'de'
-);
+const p = await predictWebLegalDocumentProbability<string>(document, 'de');
 ```
 
-- Without a type argument, `language` accepts only the bundled languages. Name the allowed set, as above, to pass others, or use `<string>` for any code.
-- Each `configure` call replaces the previous configuration. `configure({})` goes back to the bundled weights.
-- A failed load throws, and the next call fetches again. It never falls back to the bundled weights.
-- Weights must come from this repository's training (`npm run train`) for the same version of the package, because a version that changes the features needs retrained weights.
-
-### Lazy loading
-
-Import the package on demand with a dynamic `import()`, so none of its code is downloaded until you need it. Bundlers split it into a separate chunk automatically:
-
-```ts
-async function checkPage() {
-	const { predictWebLegalDocumentProbability } = await import(
-		'@hamurabi/legal-document-classifier'
-	);
-
-	return predictWebLegalDocumentProbability(document, 'en');
-}
-```
-
-The weights are lazy either way: each language's weights are a separate chunk, fetched on that language's first call.
+If the desired language is not supported or you'd prefer to use a different set of weights, you can train your own (see: [Training](#training)) and configure the library to use them later for every call. It can be done by either providing a relative/absolute URL to the JSON file or passing an object directly.
 
 ### Using without a bundler
 
@@ -122,66 +84,143 @@ The package is a standard ES module, so `<script type="module">` can load it wit
 <script type="module">
 	import { predictWebLegalDocumentProbability } from './vendor/legal-document-classifier/dist/index.js';
 
-	const p = await predictWebLegalDocumentProbability(document, 'en');
+	const p = await predictWebLegalDocumentProbability(document);
 </script>
 ```
 
 ## Documentation
 
-The package exports two functions and their types:
+### `predictWebLegalDocumentProbability`
 
-- `predictWebLegalDocumentProbability(document, language = 'en'): Promise<number>`: the probability that the rendered page is a legal document.
-  - Returns `0` for a page without text.
-  - Throws for a language without bundled or custom weights, and when custom weights fail to load or are invalid.
-  - The same page always gives the same result.
-- `configure({ weights }): void`: sets custom weights per language ([see above](#other-languages-and-custom-weights)). Throws for an invalid weights object, and then keeps the previous configuration.
-- Types: `SupportedLanguage` (`'en' | 'pl'`), `Configuration`, `WeightsSource` and `Weights` (`{ bias, weights }`).
-
-How it works:
-
-1. **Extraction:** the page's main content (its single `<main>`, or `<body>`), minus navigation, page-level headers and footers, dialogs, fixed overlays, cookie banners of common consent tools and hidden text. The title and the `h1` and `h2` headings are read too.
-2. **Features:** words and legal symbols such as `§`, plus pairs of neighbouring words (`privacy policy`). The title and `h1` get weights of their own, because they name the whole document.
-3. **Model:** a logistic regression per language, trained in Python with scikit-learn and run as plain JavaScript. `p = sigmoid(bias + Σ weight × value)`.
-
-Scoring a 65,000-character page takes about 2 ms. Extraction adds about 2–16 ms depending on the page, most of it the browser's own style and layout work on the first call. The code runs in Chrome 114 or later.
-
-For the details, see the [docs](https://github.com/nadamai/legal-document-classifier/tree/main/docs):
-
-- [classifier.md](https://github.com/nadamai/legal-document-classifier/blob/main/docs/classifier.md): the definition, API, languages, model, features and weights format
-- [extraction.md](https://github.com/nadamai/legal-document-classifier/blob/main/docs/extraction.md): how a rendered page is reduced to its main content
-- [training.md](https://github.com/nadamai/legal-document-classifier/blob/main/docs/training.md): scraping, training and evaluation
-- [architecture.md](https://github.com/nadamai/legal-document-classifier/blob/main/docs/architecture.md): the layout, packaging and toolchain
-- [testing.md](https://github.com/nadamai/legal-document-classifier/blob/main/docs/testing.md): the test suite
-
-## Contributing
-
-Contributions are welcome! A few things to know before diving in:
-
-```bash
-npm install                      # install dependencies and the pre-commit hook
-npx playwright install chromium  # the browser the tests run in
-npm run typecheck                # type-check src/, tools/ and test/
-npm test                         # build, then run the unit and e2e tests
+```ts
+async predictWebLegalDocumentProbability<Language extends string = SupportedLanguage>(
+	document: Document,
+	language?: Language
+): Promise<number>
 ```
 
-A pre-commit hook runs the type check and `prettier` automatically. CI runs the same checks and the tests on every pull request.
+Scores a rendered page as a web legal document. Doesn't modify the page.
 
-Tests live in [`test`](https://github.com/nadamai/legal-document-classifier/tree/main/test) and run with [Vitest](https://vitest.dev): unit tests in Node and in headless Chromium, and end-to-end tests of the built package on rendered pages. Test pages are hand-written: never paste text from real sites into them.
+| Argument   | Type       | Default | Description                                                                  |
+| ---------- | ---------- | ------- | ---------------------------------------------------------------------------- |
+| `document` | `Document` | `-`     | A document object rendered in a browser                                      |
+| `language` | `Language` | `'en'`  | ISO 639-1 code. Set `Language` to allow languages beyond `SupportedLanguage` |
 
-Training needs Python 3.12 or later. `npm run train:setup` creates its environment, and `npm run scrape`, `npm run train` and `npm run evaluate` collect page texts, fit the weights and measure them on unseen sites. The training data isn't part of the repository, so bring your own URL lists in `training/data/urls/<lang>/legal.txt` and `not-legal.txt` ([training.md](https://github.com/nadamai/legal-document-classifier/blob/main/docs/training.md)). The scraper skips every page whose `robots.txt` or TDMRep reservation opts out of text and data mining.
+**Returns:** probability in `[0, 1]`. The same page always gives the same result.
 
-When you change the tokenizer, the features or the extraction, please:
+**Throws:** for a language without bundled or custom weights, and when custom weights fail to load or are invalid.
 
-- retrain the weights in the same change, because they depend on the exact features,
-- update the feature snapshot (`npx vitest run --project unit-node -u`) and check its diff,
-- add or update a test for the changed behaviour.
+### `configure`
 
-[`AGENTS.md`](https://github.com/nadamai/legal-document-classifier/blob/main/AGENTS.md) holds the project's rules and conventions, for AI coding agents and humans alike.
+```ts
+configure(configuration: Configuration): void
+```
+
+Sets custom weights per language, globally, for every later prediction.
+
+| Argument                | Type                            | Description                                                |
+| ----------------------- | ------------------------------- | ---------------------------------------------------------- |
+| `configuration.weights` | `Record<string, WeightsSource>` | A map of language codes and weight URLs or weights object  |
+
+**Throws:** for an invalid weights object.
+
+### Types
+
+```ts
+type Weights = { 
+	bias: number; 
+	weights: Record<string, number> 
+};
+
+type WeightsSource = string | URL | Weights;
+```
+
+## Training
+
+You can train weights for a new language, or retrain a bundled one on your own data. The weights are fitted in Python, while the features are computed by the package's own TypeScript code, so a model sees exactly what it'll see in production.
+
+### Requirements
+
+- Node.js with the repository cloned and `npm install` run
+- Python 3.12 or later
+
+```bash
+npm run train:setup
+```
+
+It creates a virtual environment in `training/.venv`, installs the pinned Python packages and downloads Playwright's Chromium for scraping. To use a specific Python version, run:
+```bash
+PYTHON=/path/to/python3 npm run train:setup
+```
+
+### 1. List the URLs
+
+Create two files for your language in `training/data/urls/<language>/`, with one URL per line:
+
+```
+training/data/urls/<language>/
+├── legal.txt        # pages that are web legal documents
+└── not-legal.txt    # every other page
+```
+
+For the best results:
+
+- Fill `legal.txt` with URLs from many different sites. Features found on fewer than 5 sites are dropped, so a single site's boilerplate never makes it into the weights.
+- Fill `not-legal.txt` with pages that are easy to confuse with legal documents: lists of legal documents, help articles, blog posts about privacy, imprints, statutes and contract templates. Ordinary pages, such as home, product or login pages, are worth adding too.
+
+### 2. Scrape the pages
+
+```bash
+npm run scrape -- <language>
+```
+
+It builds the package, then opens each URL in headless Chromium and saves the page's text to `training/data/contents/<language>/legal.csv` and `not-legal.csv`, with the same `extractPage` the library runs in the browser. Pages already scraped are skipped, so a stopped run continues where it ended.
+
+The scraper respects the site owner's opt-out: it skips every page that `robots.txt` disallows for it or for common AI-training crawlers, and every page with a TDMRep `tdm-reservation`. It also skips failed loads, error pages, bot checks and redirects to a home or login page.
+
+### 3. Train the weights
+
+```bash
+npm run train -- <language>
+```
+
+It writes `src/weights/<language>.json` and prints a report: the features kept at each step, the page counts, the file size and the strongest tokens in both directions. The same data always gives the same file, byte for byte.
+
+| Option          | Default | Description                                                  |
+| --------------- | ------- | ------------------------------------------------------------ |
+| `--min-sites`   | `5`     | Keeps only the features found on at least this many domains  |
+| `--max-weights` | `2000`  | Keeps only this many strongest weights (about 45 KB of JSON) |
+| `--c`           | `1.0`   | Inverse regularisation strength: lower means smaller weights |
+
+### 4. Evaluate and choose a threshold
+
+```bash
+npm run evaluate -- <language>
+```
+
+It splits the sites into 5 groups and scores each group with a model trained on the other four, so no page is scored by a model that saw its site. It prints the AUC, the precision and recall at several thresholds, and the lowest threshold with at least 99% precision.
+
+It also writes `training/data/review/<language>.csv` with every page sorted by how much it disagrees with its label, the quickest way to find mislabelled URLs.
+
+### 5. Use the weights
+
+Use the results in the [`configure`](#custom-languages-and-weights) method.
+
+Weights depend on the exact features of the package version that trained them, so retrain them when you update to a version that changes the tokenizer, the features or the extraction method.
+
+## Supported languages
+
+| Language   | Code | AUC   | 99% precision from |
+| ---------- | ---- | ----- | ------------------ |
+| 🇺🇸 English | `en` | 0.928 | `p ≥ 0.893`        |
+| 🇵🇱 Polish  | `pl` | 0.975 | `p ≥ 0.860`        |
+
+
+## Scope
+
+The package is built to detect web legal documents. With custom weights you can train it to detect other kinds of pages, but keep in mind the tokenizer, features and extraction are tuned for legal text, and changes to them will always favour that purpose.
+
 
 ## License
 
 Licensed under the [MIT](https://github.com/nadamai/legal-document-classifier/blob/main/LICENSE), for both the code and the trained weights. The package has no runtime dependencies. The training data isn't distributed.
-
-## Support
-
-If this package saved you some time, consider [buying me a coffee](https://buymeacoffee.com/nadamai)! ☕
