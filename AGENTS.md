@@ -102,3 +102,4 @@ These files describe the project as it is now. Update them as part of the change
 - **No development history.** No change logs, dated decision entries or "previously…" notes. A short reason next to a current choice is fine. Open questions go in the doc for their topic.
 - **Keep AGENTS.md short.** It holds a summary, one line per assumption, the hard rules, the style rules, the commands and the docs index. When a section here passes about 15 lines, or a topic grows its own rules, move the detail to `docs/<topic>.md`, leave a one-line pointer, and add the file to the table above.
 - **Commands are real.** List a command only once it exists and works.
+- **Nothing about the contents of `training/data/`.** It's private and gitignored, so other agents can't see or check it. Never write about its pages, sites, labels, counts or results measured on it, here or in `docs/`. Describe only its file formats and the commands that read or write it.

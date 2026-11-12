@@ -92,10 +92,10 @@ It prints one line per page, `ok` with the text length or `skip` with the reason
 
 The same page texts always give a byte-identical weights file. On every training page, the TypeScript classifier with the published file reproduces the `p` training reports, within 1e-15.
 
-**Why these defaults** (measured with `npm run evaluate` on the current data):
-- **2,000 weights** make files of about 45–47 KB, within the budget of up to about 100 KB. Keeping every weight (54,000 for English, 127,000 for Polish, 1.2–3.1 MB) changed AUC by at most 0.003, and 3,000 weights (about 70 KB) did no better than 2,000.
-- **`C = 1`** gave the best AUC and the most recall at 99% precision of the values 0.1, 0.3, 1, 3, 10 and 30. Higher values raise recall at p ≥ 0.9 but let more not-legal pages through.
-- Check both again with `npm run evaluate -- --max-weights N --c C` when the data changes a lot.
+**Defaults:**
+- **2,000 weights** keep each file within the budget of up to about 100 KB.
+- **`C = 1`** is scikit-learn's default regularisation.
+- Compare other values with `npm run evaluate -- --max-weights N --c C`.
 
 ### Language detection
 
