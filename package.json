@@ -61,7 +61,7 @@
     "@types/node": "26.6.6",
     "@vitest/browser-playwright": "5.1.0",
     "husky": "^9.1.7",
-    "playwright": "1.65.0",
+    "playwright": "1.65.1",
     "prettier": "^3.9.10",
     "prettier-plugin-jsdoc": "^1.8.1",
     "pretty-quick": "^4.2.2",
